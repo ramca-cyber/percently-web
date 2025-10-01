@@ -10,63 +10,58 @@
   <main class="wrap">
     <header class="site-header">
       <h1 class="title">Percently</h1>
-      <p class="subtitle">Fast, accessible percentage calculations — mobile first.</p>
+      <p class="subtitle">Professional percentage calculations — quick and accurate.</p>
     </header>
 
-    <section class="calculator">
-      <aside class="calc-panel" aria-label="Calculation options">
-        <fieldset class="options" role="radiogroup" aria-label="Select calculation">
-          <legend class="visually-hidden">Calculation type</legend>
+    <section class="card">
+      <form class="calc-area" id="calc-form" novalidate>
+        <legend class="visually-hidden">Percentage calculator</legend>
 
+        <!-- Calculation option cards (top) -->
+        <fieldset class="options" role="radiogroup" aria-label="Select calculation">
           <input type="radio" id="opt-percent-of" name="calc" value="percent-of" checked>
-          <label for="opt-percent-of" class="option-card">
-            <strong>X% of Y</strong>
-          </label>
+          <label for="opt-percent-of" class="option-card">X% of Y</label>
 
           <input type="radio" id="opt-increase-by" name="calc" value="increase-by">
-          <label for="opt-increase-by" class="option-card">
-            <strong>Increase Y by X%</strong>
-          </label>
+          <label for="opt-increase-by" class="option-card">Increase Y by X%</label>
 
           <input type="radio" id="opt-decrease-by" name="calc" value="decrease-by">
-          <label for="opt-decrease-by" class="option-card">
-            <strong>Decrease Y by X%</strong>
-          </label>
+          <label for="opt-decrease-by" class="option-card">Decrease Y by X%</label>
 
           <input type="radio" id="opt-percent-diff" name="calc" value="percent-diff">
-          <label for="opt-percent-diff" class="option-card">
-            <strong>Percent difference</strong>
-          </label>
+          <label for="opt-percent-diff" class="option-card">Percent difference</label>
 
           <input type="radio" id="opt-what-percent" name="calc" value="what-percent">
-          <label for="opt-what-percent" class="option-card">
-            <strong>X as % of Y</strong>
-          </label>
+          <label for="opt-what-percent" class="option-card">X as % of Y</label>
         </fieldset>
-      </aside>
 
-      <form class="calc-form" id="calc-form" novalidate>
-        <div class="inputs">
-          <label for="input-x" class="label">X</label>
-          <input id="input-x" type="number" inputmode="decimal" step="any" placeholder="Enter X" required>
+        <!-- Inputs and actions (under the cards) -->
+        <div class="form-body">
+          <div class="inputs">
+            <div class="field">
+              <label for="input-x">X</label>
+              <input id="input-x" type="number" inputmode="decimal" step="any" placeholder="Enter X" required>
+            </div>
+            <div class="field">
+              <label for="input-y">Y</label>
+              <input id="input-y" type="number" inputmode="decimal" step="any" placeholder="Enter Y" required>
+            </div>
+          </div>
 
-          <label for="input-y" class="label">Y</label>
-          <input id="input-y" type="number" inputmode="decimal" step="any" placeholder="Enter Y" required>
+          <div class="actions">
+            <button type="submit" id="calculate" class="btn primary">Calculate</button>
+            <button type="button" id="clear" class="btn">Clear</button>
+          </div>
+
+          <div id="result" class="result" aria-live="polite"></div>
+
+          <p class="hint">Tip: press Enter to calculate. Decimals allowed.</p>
         </div>
-
-        <div class="actions">
-          <button type="submit" id="calculate" class="btn primary">Calculate</button>
-          <button type="button" id="clear" class="btn">Clear</button>
-        </div>
-
-        <div id="result" class="result" aria-live="polite"></div>
-
-        <p class="hint" id="hint">Tip: press Enter to calculate. Values can be decimals.</p>
       </form>
     </section>
 
     <footer class="site-footer">
-      <small>Built with ♥ — responsive and accessible</small>
+      <small>Built with ♥ — responsive & accessible</small>
     </footer>
   </main>
 

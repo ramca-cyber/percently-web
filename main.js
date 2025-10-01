@@ -1,4 +1,4 @@
-// Percently - input wiring and calculation logic
+// Percently - input wiring and calculation logic (unchanged behavior)
 (function () {
   const form = document.getElementById('calc-form');
   const xInput = document.getElementById('input-x');
@@ -13,7 +13,6 @@
 
   function formatNumber(v, decimals = 2) {
     if (!isFinite(v)) return String(v);
-    // show an integer without trailing decimals
     if (Math.abs(Math.round(v) - v) < 1e-12) return String(Math.round(v));
     return Number(v).toLocaleString(undefined, { maximumFractionDigits: decimals });
   }
@@ -37,46 +36,34 @@
 
     switch (type) {
       case 'percent-of': {
-        // X% of Y => (X/100) * Y
         const out = (x / 100) * y;
         return { ok: true, msg: `${formatNumber(x)}% of ${formatNumber(y)} is ${formatNumber(out)}` };
       }
-
       case 'increase-by': {
-        // Increase Y by X% => Y + (X/100)*Y
         const out = y + (x / 100) * y;
         return { ok: true, msg: `${formatNumber(y)} increased by ${formatNumber(x)}% is ${formatNumber(out)}` };
       }
-
       case 'decrease-by': {
         const out = y - (x / 100) * y;
         return { ok: true, msg: `${formatNumber(y)} decreased by ${formatNumber(x)}% is ${formatNumber(out)}` };
       }
-
       case 'percent-diff': {
-        // Percent difference between X and Y = (|X-Y| / ((|X|+|Y|)/2)) * 100
-        // following common definition, use absolute values in denominator to avoid sign flip
         if (x === 0 && y === 0) return { ok: true, msg: 'Both values are zero; percent difference is 0%.' };
-
         const denom = (Math.abs(x) + Math.abs(y)) / 2;
         if (denom === 0) return { ok: false, msg: 'Percent difference is undefined when both |X| + |Y| equals zero.' };
-
         const out = (Math.abs(x - y) / denom) * 100;
         return { ok: true, msg: `Percent difference between ${formatNumber(x)} and ${formatNumber(y)} is ${formatNumber(out, 4)}%` };
       }
-
       case 'what-percent': {
         if (y === 0) return { ok: false, msg: 'Cannot divide by zero.' };
         const out = (x / y) * 100;
         return { ok: true, msg: `${formatNumber(x)} is ${formatNumber(out)}% of ${formatNumber(y)}` };
       }
-
       default:
         return { ok: false, msg: 'Unknown calculation selected.' };
     }
   }
 
-  // synchronize placeholder/labels for clarity (optional)
   function refreshLabels() {
     const type = getSelected();
     const labelX = document.querySelector('label[for="input-x"]');
@@ -114,10 +101,8 @@
     }
   }
 
-  // wire events
   radios.forEach(r => r.addEventListener('change', () => {
     refreshLabels();
-    // keep focus on x for faster input
     xInput.focus();
   }));
 
@@ -138,7 +123,6 @@
     xInput.focus();
   });
 
-  // allow Enter from inputs to submit
   [xInput, yInput].forEach(inp => {
     inp.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -148,6 +132,5 @@
     });
   });
 
-  // initial labels
   refreshLabels();
 })();
