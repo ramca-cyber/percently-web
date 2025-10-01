@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Percently - Percentage Calculator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Percentage Calculator</h1>
+        <div class="calculator">
+            <label for="calc-type">Choose Calculation:</label>
+            <select id="calc-type">
+                <option value="percent-of">X% of Y</option>
+                <option value="increase-by">Increase Y by X%</option>
+                <option value="decrease-by">Decrease Y by X%</option>
+                <option value="percent-diff">Percent difference between X and Y</option>
+                <option value="what-percent">What percent of Y is X</option>
+            </select>
+            <div id="inputs">
+                <input type="number" id="input-x" placeholder="Enter X">
+                <input type="number" id="input-y" placeholder="Enter Y">
+            </div>
+            <button id="calculate">Calculate</button>
+            <div id="result"></div>
+        </div>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
