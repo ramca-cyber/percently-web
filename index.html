@@ -1,75 +1,195 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Percently — Percentage Calculator</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <main class="wrap">
-    <header class="site-header">
-      <h1 class="title">Percently</h1>
-      <p class="subtitle">Fast, accessible percentage calculations — mobile first.</p>
-    </header>
+:root{
+  --bg:#f6f8fb;
+  --card:#ffffff;
+  --muted:#6b7280;
+  --brand:#0b74ff;
+  --accent:#1f6feb;
+  --success:#0b9d58;
+  --danger:#e11d48;
+  --glass: rgba(11,116,255,0.06);
+  --radius:12px;
+  --max-width:1000px;
+  --gap:18px;
+  --ui-padding:18px;
+  font-synthesis: none;
+  -webkit-font-smoothing:antialiased;
+}
 
-    <section class="calculator">
-      <aside class="calc-panel" aria-label="Calculation options">
-        <fieldset class="options" role="radiogroup" aria-label="Select calculation">
-          <legend class="visually-hidden">Calculation type</legend>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background:linear-gradient(180deg,var(--bg) 0%, #eef3fb 100%);
+  color:#0f172a;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
 
-          <input type="radio" id="opt-percent-of" name="calc" value="percent-of" checked>
-          <label for="opt-percent-of" class="option-card">
-            <strong>X% of Y</strong>
-          </label>
+.wrap{
+  max-width:var(--max-width);
+  margin:36px auto;
+  padding:16px;
+}
 
-          <input type="radio" id="opt-increase-by" name="calc" value="increase-by">
-          <label for="opt-increase-by" class="option-card">
-            <strong>Increase Y by X%</strong>
-          </label>
+/* header */
+.site-header{
+  text-align:center;
+  margin-bottom:18px;
+}
+.title{
+  margin:0;
+  font-size:1.6rem;
+  letter-spacing:-0.02em;
+}
+.subtitle{
+  margin:6px 0 0;
+  color:var(--muted);
+  font-size:0.95rem;
+}
 
-          <input type="radio" id="opt-decrease-by" name="calc" value="decrease-by">
-          <label for="opt-decrease-by" class="option-card">
-            <strong>Decrease Y by X%</strong>
-          </label>
+/* layout */
+.calculator{
+  display:grid;
+  grid-template-columns:300px 1fr;
+  gap:var(--gap);
+  align-items:start;
+}
 
-          <input type="radio" id="opt-percent-diff" name="calc" value="percent-diff">
-          <label for="opt-percent-diff" class="option-card">
-            <strong>Percent difference</strong>
-          </label>
+/* panel (left) */
+.calc-panel{
+  background:var(--card);
+  border-radius:var(--radius);
+  padding:10px;
+  box-shadow:0 6px 18px rgba(13,30,57,0.06);
+  border:1px solid rgba(13,30,57,0.04);
+}
+.options{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  border:0;
+  margin:0;
+  padding:8px;
+}
+.options input[type="radio"]{
+  display:none;
+}
+/* simplified card look: single, clear title centered */
+.option-card{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:14px;
+  border-radius:10px;
+  cursor:pointer;
+  border:1px solid rgba(13,30,57,0.04);
+  transition:all 160ms ease;
+  background:linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.4));
+  font-weight:700;
+  font-size:0.95rem;
+  color:#0f172a;
+}
+.options input[type="radio"]:checked + .option-card{
+  box-shadow:0 10px 30px rgba(11,116,255,0.12);
+  border-color:var(--glass);
+  background:linear-gradient(180deg,#f7fbff,#eef6ff);
+  transform:translateY(-3px);
+}
 
-          <input type="radio" id="opt-what-percent" name="calc" value="what-percent">
-          <label for="opt-what-percent" class="option-card">
-            <strong>X as % of Y</strong>
-          </label>
-        </fieldset>
-      </aside>
+/* form (right) */
+.calc-form{
+  background:var(--card);
+  border-radius:var(--radius);
+  padding:20px;
+  box-shadow:0 6px 18px rgba(13,30,57,0.06);
+  border:1px solid rgba(13,30,57,0.04);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.inputs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.label{
+  display:block;
+  font-size:0.85rem;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+.inputs input[type="number"]{
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid rgba(13,30,57,0.08);
+  background:linear-gradient(180deg,#fff,#fbfdff);
+  font-size:1rem;
+  outline:none;
+  transition:box-shadow 120ms;
+}
+.inputs input[type="number"]:focus{
+  box-shadow:0 6px 20px rgba(11,116,255,0.06);
+  border-color:rgba(11,116,255,0.18);
+}
 
-      <form class="calc-form" id="calc-form" novalidate>
-        <div class="inputs">
-          <label for="input-x" class="label">X</label>
-          <input id="input-x" type="number" inputmode="decimal" step="any" placeholder="Enter X" required>
+/* actions */
+.actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.btn{
+  padding:10px 14px;
+  border-radius:10px;
+  border:1px solid rgba(13,30,57,0.06);
+  background:transparent;
+  cursor:pointer;
+  font-weight:600;
+}
+.btn.primary{
+  background:var(--brand);
+  color:#fff;
+  border:none;
+}
+.btn:hover{transform:translateY(-1px)}
+.result{
+  padding:14px;
+  border-radius:10px;
+  background:linear-gradient(180deg, #f7fdff, #f0f8ff);
+  color:var(--accent);
+  font-size:1.05rem;
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:12px;
+}
+.hint{color:var(--muted); font-size:0.85rem; margin:0}
 
-          <label for="input-y" class="label">Y</label>
-          <input id="input-y" type="number" inputmode="decimal" step="any" placeholder="Enter Y" required>
-        </div>
+/* footer */
+.site-footer{
+  margin-top:18px;
+  text-align:center;
+  color:var(--muted);
+  font-size:0.85rem;
+}
 
-        <div class="actions">
-          <button type="submit" id="calculate" class="btn primary">Calculate</button>
-          <button type="button" id="clear" class="btn">Clear</button>
-        </div>
+/* accessibility helpers */
+.visually-hidden{
+  position:absolute !important;
+  height:1px; width:1px;
+  overflow:hidden;
+  clip:rect(1px,1px,1px,1px);
+  white-space:nowrap;
+}
 
-        <div id="result" class="result" aria-live="polite"></div>
-
-        <p class="hint" id="hint">Tip: press Enter to calculate. Values can be decimals.</p>
-      </form>
-    </section>
-
-    <footer class="site-footer">
-      <small>Built with ♥ — responsive and accessible</small>
-    </footer>
-  </main>
-
-  <script src="main.js"></script>
-</body>
-</html>
+/* responsive */
+@media (max-width:880px){
+  .calculator{grid-template-columns:1fr; }
+  .inputs{grid-template-columns:1fr;}
+  .calc-panel{order:2}
+  .calc-form{order:1}
+  .wrap{margin:16px}
+}
