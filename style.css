@@ -75,24 +75,26 @@ body{
 .options input[type="radio"]{
   display:none;
 }
+/* simplified card look: single, clear title centered */
 .option-card{
   display:flex;
-  flex-direction:column;
-  gap:4px;
-  padding:12px;
+  align-items:center;
+  justify-content:center;
+  padding:14px;
   border-radius:10px;
   cursor:pointer;
-  border:1px solid transparent;
+  border:1px solid rgba(13,30,57,0.04);
   transition:all 160ms ease;
   background:linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.4));
+  font-weight:700;
+  font-size:0.95rem;
+  color:#0f172a;
 }
-.option-card strong{font-size:0.95rem}
-.option-card small{color:var(--muted); font-size:0.82rem}
 .options input[type="radio"]:checked + .option-card{
-  box-shadow:0 6px 20px rgba(11,116,255,0.12);
+  box-shadow:0 10px 30px rgba(11,116,255,0.12);
   border-color:var(--glass);
-  background:linear-gradient(180deg,#f7fbff,#f0f7ff);
-  transform:translateY(-2px);
+  background:linear-gradient(180deg,#f7fbff,#eef6ff);
+  transform:translateY(-3px);
 }
 
 /* form (right) */
