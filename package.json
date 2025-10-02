@@ -1,0 +1,12 @@
+{
+  "name": "percently-web",
+  "version": "0.1.0",
+  "description": "Percently — quick percentage calculator",
+  "type": "module",
+  "scripts": {
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^1.0.0"
+  }
+}

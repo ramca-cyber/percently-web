@@ -3,14 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Percently — Percentage Calculator</title>
+  <title>Percently — Quick percentage calculator</title>
+  <meta name="description" content="Percently: quick, accurate percentage calculations — X% of Y, increase/decrease, percent difference, and more." />
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.ico">
 </head>
 <body>
   <main class="wrap">
     <header class="site-header">
       <h1 class="title">Percently</h1>
-      <p class="subtitle">Professional percentage calculations — quick and accurate.</p>
+      <p class="subtitle">Quick, accurate percentage calculations — X% of Y, increase/decrease, percent difference, and more.</p>
     </header>
 
     <section class="card">
@@ -39,12 +41,14 @@
         <div class="form-body">
           <div class="inputs">
             <div class="field">
-              <label for="input-x">X</label>
-              <input id="input-x" type="number" inputmode="decimal" step="any" placeholder="Enter X" required>
+              <label for="input-x" id="label-x">X</label>
+              <input id="input-x" type="text" inputmode="decimal" placeholder="Enter X" required>
+              <div class="helper" id="help-x" aria-hidden="true"></div>
             </div>
             <div class="field">
-              <label for="input-y">Y</label>
-              <input id="input-y" type="number" inputmode="decimal" step="any" placeholder="Enter Y" required>
+              <label for="input-y" id="label-y">Y</label>
+              <input id="input-y" type="text" inputmode="decimal" placeholder="Enter Y" required>
+              <div class="helper" id="help-y" aria-hidden="true"></div>
             </div>
           </div>
 
@@ -55,7 +59,7 @@
 
           <div id="result" class="result" aria-live="polite"></div>
 
-          <p class="hint">Tip: press Enter to calculate. Decimals allowed.</p>
+          <p class="hint">Tip: press Enter to calculate. You can type numbers with comma or dot decimals.</p>
         </div>
       </form>
     </section>
@@ -65,6 +69,6 @@
     </footer>
   </main>
 
-  <script src="main.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>
