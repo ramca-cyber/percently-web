@@ -158,7 +158,7 @@ function showToast(msg, duration = 3000) {
 }
 
 // Small inline SVG for copy/link icon
-const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-left:6px; fill:none; stroke:currentColor; stroke-w[...]\n  <rect x="9" y="9" width="10" height="10" rx="2"></rect>\n  <path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"></path>\n</svg>`;
+const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-left:6px; fill:none; stroke:currentColor; stroke-width:2"><rect x="9" y="9" width="10" height="10" rx="2"></rect><path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"></path></svg>`;
 
 // Generic copy-to-clipboard with fallback; returns Promise<boolean>
 function copyTextToClipboard(text) {
@@ -477,7 +477,11 @@ function loadFromURL() {
         // show result (do not add to history)
         showResult(panels[mode], result.htmlNumeric, result.htmlText, false);
         // prime lastComputedEntry so the next manual submit will add this computed result to history
-        lastComputedEntry = { mode, params: readInputsFor(mode), text: result.htmlText, value: result.r };
+        lastComputedEntry = { mode, params: readInputsFor(mode), paramsNum: (function numericize(obj) {
+          const out = {};
+          Object.keys(obj || {}).forEach(k => { out[k] = normalizeNumberInput(obj[k] || ''); });
+          return out;
+        })(readInputsFor(mode)), text: result.htmlText, value: result.r };
       } else if (result.htmlText) {
         showResult(panels[mode], result.htmlNumeric, result.htmlText, false);
       }
@@ -575,8 +579,9 @@ $('history-list').addEventListener('click', async (e) => {
       showToast(url, 6000);
     }
   } else if (action === 'load') {
+    // Load the selected history item into the UI and show its result (do not add it to history).
     selectTab(item.mode, false);
-    
+
     // Hydrate inputs based on mode
     if (item.mode === 'of') {
       $('of-x').value = item.params.x || '';
@@ -594,8 +599,8 @@ $('history-list').addEventListener('click', async (e) => {
       $('diff-old').value = item.params.old || '';
       $('diff-new').value = item.params.new || '';
     }
-    
-    // persist loaded history values so they are retained when switching panels
+
+    // Persist loaded history values so they are retained when switching panels
     saveAllInputs();
 
     // Ensure groups sync so first/second propagate across panels where applicable
@@ -604,8 +609,33 @@ $('history-list').addEventListener('click', async (e) => {
     const s = $('of-y') ? $('of-y').value : '';
     if (s) syncInputFrom('of-y', s);
 
-    // Clear any visible result in the loaded panel
-    clearResult(panels[item.mode]);
+    // Compute the result using the hydrated inputs and show it.
+    // Do NOT add any history entry here — we're loading a past calculation.
+    const result = computeNow(item.mode);
+    if (!isNaN(result.r)) {
+      // Show the computed result (no history mutation)
+      showResult(panels[item.mode], result.htmlNumeric, result.htmlText, false);
+
+      // Prime lastComputedEntry with the loaded item so the next manual submit knows this is the last state
+      lastComputedEntry = {
+        mode: item.mode,
+        params: item.params || {},
+        paramsNum: (function numericize(obj) {
+          const out = {};
+          Object.keys(obj || {}).forEach(k => {
+            out[k] = normalizeNumberInput(obj[k] || '');
+          });
+          return out;
+        })(item.params || {}),
+        text: result.htmlText,
+        value: result.r
+      };
+    } else if (result.htmlText) {
+      // Show error if the stored params produce an invalid result
+      showResult(panels[item.mode], result.htmlNumeric, result.htmlText, false);
+      // Do not set lastComputedEntry in this case
+    }
+
     focusFirstInput();
   }
 });
@@ -621,6 +651,32 @@ Object.keys(tabs).forEach(mode => {
   const tab = tabs[mode];
   if (tab) tab.addEventListener('click', () => selectTab(mode));
 });
+
+// Utility: numericize a params object (strings -> normalized numbers)
+function numericizeParams(params) {
+  const out = {};
+  Object.keys(params || {}).forEach(k => {
+    out[k] = normalizeNumberInput(params[k] || '');
+  });
+  return out;
+}
+
+// Numeric-tolerant equality for params
+function numsEqual(a, b) {
+  if (!a || !b) return false;
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const k of aKeys) {
+    const va = a[k];
+    const vb = b[k];
+    // treat NaN==NaN as equal for the purposes of comparing "no numeric value"
+    if (Number.isNaN(va) && Number.isNaN(vb)) continue;
+    if (Number.isNaN(va) || Number.isNaN(vb)) return false;
+    if (Math.abs(va - vb) > 1e-12) return false;
+  }
+  return true;
+}
 
 // Setup forms
 Object.keys(panels).forEach(mode => {
@@ -640,9 +696,18 @@ Object.keys(panels).forEach(mode => {
     e.preventDefault();
     // Read inputs up front so we can compare before computing
     const inputs = readInputsFor(mode);
+    const inputsNum = numericizeParams(inputs);
 
-    // Skip recalculation if inputs haven't changed since last compute for the same mode
-    if (lastComputedEntry && lastComputedEntry.mode === mode && deepEqual(lastComputedEntry.params, inputs)) {
+    // Numeric version of lastComputedEntry.params
+    let lastParamsNum = null;
+    if (lastComputedEntry && lastComputedEntry.paramsNum) {
+      lastParamsNum = lastComputedEntry.paramsNum;
+    } else if (lastComputedEntry && lastComputedEntry.params) {
+      lastParamsNum = numericizeParams(lastComputedEntry.params);
+    }
+
+    // Skip recalculation if inputs haven't changed since last compute for the same mode (numeric comparison)
+    if (lastComputedEntry && lastComputedEntry.mode === mode && lastParamsNum && numsEqual(inputsNum, lastParamsNum)) {
       return; // do nothing; keep existing visible result
     }
 
@@ -659,6 +724,7 @@ Object.keys(panels).forEach(mode => {
       lastComputedEntry = {
         mode,
         params: inputs,
+        paramsNum: inputsNum,
         text: result.htmlText,
         value: result.r
       };
@@ -688,8 +754,8 @@ Object.keys(panels).forEach(mode => {
 
   // Input change handlers - clear result, update URL and persist all inputs.
   // Also sync first/second inputs across panels.
-  const inputs = panel.querySelectorAll('input[type="text"]');
-  inputs.forEach(inp => {
+  const inputsEls = panel.querySelectorAll('input[type="text"]');
+  inputsEls.forEach(inp => {
     inp.addEventListener('input', (ev) => {
       clearResult(panel);
       // Sync semantic groups (by position)
@@ -735,8 +801,19 @@ Object.keys(panels).forEach(mode => {
     }
 
     makeCopyTarget(valueBtn, () => {
-      // copy only the visible numeric text (no explanatory text)
-      return inline && inline.textContent ? inline.textContent.trim() : '';
+      // Prefer the canonical formatted value from lastComputedEntry
+      if (lastComputedEntry && lastComputedEntry.mode === mode && typeof lastComputedEntry.value !== 'undefined' && !Number.isNaN(lastComputedEntry.value)) {
+        if (mode === 'what') {
+          // what% uses percent formatting in computeNow; append %
+          return `${formatNumber(lastComputedEntry.value)}%`;
+        }
+        return `${formatNumber(lastComputedEntry.value)}`;
+      }
+
+      // Fallback: sanitize the visible inline content (strip any equals sign or extraneous whitespace)
+      const raw = inline && inline.textContent ? inline.textContent.trim() : '';
+      const sanitized = raw.replace(/^[=\s]+/, '').trim();
+      return sanitized;
     }, { okMsg: 'Value copied to clipboard', failMsg: 'Copy failed' });
 
     // Link button (permalink for this result) — visible label + icon to the right
@@ -755,8 +832,16 @@ Object.keys(panels).forEach(mode => {
     makeCopyTarget(linkBtn, () => {
       const params = new URLSearchParams();
       params.set('mode', mode);
-      const inputsNow = readInputsFor(mode);
-      Object.keys(inputsNow).forEach(k => { if (inputsNow[k]) params.set(k, inputsNow[k]); });
+
+      // Prefer the canonical parameters from the lastComputedEntry for this mode
+      const canonicalParams = (lastComputedEntry && lastComputedEntry.mode === mode && lastComputedEntry.params)
+        ? lastComputedEntry.params
+        : readInputsFor(mode);
+
+      Object.keys(canonicalParams || {}).forEach(k => {
+        if (canonicalParams[k]) params.set(k, canonicalParams[k]);
+      });
+
       params.set('auto', '1');
       return window.location.origin + window.location.pathname + '?' + params.toString();
     }, { okMsg: 'Link copied to clipboard', failMsg: 'Copy failed' });
