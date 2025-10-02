@@ -144,11 +144,14 @@ function showInlineResult(res) {
 // Radios update UI only, no auto-calc
 radios.forEach(r => r.addEventListener('change', () => { refreshUIForMode(); }));
 
-// Prevent Enter from submitting
+// Trigger calculation on Enter key
 [xInput, yInput].forEach(inp => {
   inp.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
+      const type = document.querySelector('input[name="calc"]:checked').value;
+      const res = calculate(type, xInput.value.trim(), yInput.value.trim());
+      showInlineResult(res);
     }
   });
 });
