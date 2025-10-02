@@ -56,6 +56,7 @@ body{
   cursor:pointer;
   color:var(--muted);
   transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  font-size:15px; /* increased tab font size */
 }
 .option-card[role="tab"][aria-selected="true"]{
   background: linear-gradient(180deg,var(--selected-bg-start), var(--selected-bg-end));
@@ -64,6 +65,8 @@ body{
   transform: translateY(-2px);
   border: 1px solid rgba(11,116,255,0.12);
   z-index: 2;
+  font-size:16px; /* slightly larger when selected */
+  font-weight:700;
 }
 
 /* Split rectangle: left inputs / right result */
@@ -144,9 +147,14 @@ body{
 }
 .bar-btn.primary{
   background:var(--accent);
-  color:white;
+  color:#fff; /* ensure white text on primary */
   box-shadow: 0 10px 20px rgba(11,116,255,0.08);
 }
+/* make sure any span inside primary inherits the white color */
+.bar-btn.primary span { color: inherit; }
+/* ensure svg icons inside primary use currentColor so they remain visible */
+.bar-btn.primary svg { stroke: currentColor; fill: none; width:14px; height:14px; vertical-align:middle; margin-right:6px; }
+
 .bar-btn.secondary{
   background:transparent;
   border:1px solid rgba(13,30,57,0.08);
@@ -192,7 +200,6 @@ body{
 .center{text-align:center}
 
 /* ---------- Percently: centralized toast styles (appended) ---------- */
-/* CSS variables let the app theme the toast centrally. Adjust these in your main stylesheet. */
 :root {
   --percently-toast-bg: rgba(6,36,58,0.95);
   --percently-toast-color: #fff;
