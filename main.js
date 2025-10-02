@@ -656,6 +656,24 @@ Object.keys(panels).forEach(mode => {
   }
 });
 
+function selectTab(mode, skipUrlUpdate = false) {
+  currentMode = mode;
+
+  // Update tab aria-selected and show/hide panels
+  Object.keys(tabs).forEach(m => {
+    if (tabs[m]) tabs[m].setAttribute('aria-selected', m === mode ? 'true' : 'false');
+    if (panels[m]) panels[m].style.display = m === mode ? 'block' : 'none';
+  });
+
+  // Update URL params to reflect current mode + inputs (unless caller asked to skip)
+  if (!skipUrlUpdate) {
+    updateURL();
+  }
+
+  // Focus the first input in the newly selected panel
+  focusFirstInput();
+}
+
 // Initialize: load stored inputs, then allow URL to override, then render history
 loadAllInputs();
 loadFromURL();
