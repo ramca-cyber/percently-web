@@ -300,7 +300,7 @@ function computeNow(mode) {
   return { r, htmlNumeric, htmlText, text };
 }
 
-// Clear result container for a panel (hide secondary actions but keep Calculate visible)
+// Clear result container for a panel (leave action buttons visible)
 function clearResult(panelEl) {
   const resultContainer = panelEl.querySelector('.result-container');
   if (resultContainer) {
@@ -310,19 +310,17 @@ function clearResult(panelEl) {
     if (resultInline) resultInline.innerHTML = '';
     if (resultMsg) resultMsg.textContent = '';
   }
-  // Ensure actions container is not using the global .hidden rule which hides all children.
+  // Do NOT hide clear/primary buttons — keep actions visible so user can clear anytime.
   const actions = panelEl.querySelector('.actions-below');
   if (actions) {
-    actions.classList.remove('hidden'); // remove the container-hidden class so primary can be visible
-    const primary = actions.querySelector('.bar-btn.primary');
-    const others = Array.from(actions.querySelectorAll('button')).filter(b => b !== primary);
-    others.forEach(b => b.style.display = 'none');
-    if (primary) primary.style.display = '';
+    actions.classList.remove('hidden');
+    // Ensure all action buttons are visible (primary & secondary)
+    Array.from(actions.querySelectorAll('button')).forEach(b => { b.style.display = ''; });
   }
 }
 
-// Show result in a panel and optionally reveal the secondary action buttons (Calculate stays visible)
-function showResult(panelEl, htmlNumeric, htmlText, showSecondary = true) {
+// Show result in a panel (always keep action buttons visible)
+function showResult(panelEl, htmlNumeric, htmlText /* unused showSecondary param kept for back-compat */, _showSecondary = true) {
   const rc = panelEl.querySelector('.result-container');
   if (!rc) return;
   const inline = rc.querySelector('.result-inline');
@@ -341,22 +339,33 @@ function showResult(panelEl, htmlNumeric, htmlText, showSecondary = true) {
     msg.innerHTML = htmlText || '';
   }
 
-  // Show or hide the secondary action buttons (e.g., Clear). Keep primary Calculate visible always.
+  // Ensure actions are visible and buttons remain accessible (do not hide Clear)
   const actions = panelEl.querySelector('.actions-below');
   if (actions) {
-    // remove the container-hidden class so children are not suppressed by CSS rule
     actions.classList.remove('hidden');
-    const primary = actions.querySelector('.bar-btn.primary');
-    const others = Array.from(actions.querySelectorAll('button')).filter(b => b !== primary);
-    if (showSecondary) {
-      others.forEach(b => b.style.display = '');
-    } else {
-      others.forEach(b => b.style.display = 'none');
-    }
-    if (primary) primary.style.display = '';
+    Array.from(actions.querySelectorAll('button')).forEach(b => { b.style.display = ''; });
   }
 
   // aria-live areas on the DOM will announce as appropriate
+}
+
+// Tab selection (ensure function exists before tab click wiring)
+function selectTab(mode, skipUrlUpdate = false) {
+  currentMode = mode;
+  
+  // Update tab aria-selected
+  Object.keys(tabs).forEach(m => {
+    if (tabs[m]) tabs[m].setAttribute('aria-selected', m === mode ? 'true' : 'false');
+    if (panels[m]) panels[m].style.display = m === mode ? 'block' : 'none';
+  });
+
+  // Update URL
+  if (!skipUrlUpdate) {
+    updateURL();
+  }
+
+  // Focus first input
+  focusFirstInput();
 }
 
 // Focus first input in current panel
@@ -420,7 +429,7 @@ function loadFromURL() {
     if (auto) {
       const result = computeNow(mode);
       if (!isNaN(result.r)) {
-        // show result but keep secondary actions hidden (per spec do not add to history)
+        // show result (do not add to history)
         showResult(panels[mode], result.htmlNumeric, result.htmlText, false);
       } else if (result.htmlText) {
         showResult(panels[mode], result.htmlNumeric, result.htmlText, false);
@@ -541,6 +550,7 @@ $('history-list').addEventListener('click', async (e) => {
     const s = $('of-y') ? $('of-y').value : '';
     if (s) syncInputFrom('of-y', s);
 
+    // Clear any visible result in the loaded panel
     clearResult(panels[item.mode]);
     focusFirstInput();
   }
@@ -554,22 +564,21 @@ $('clear-history').addEventListener('click', () => {
 
 // Setup tab buttons
 Object.keys(tabs).forEach(mode => {
-  tabs[mode].addEventListener('click', () => selectTab(mode));
+  const tab = tabs[mode];
+  if (tab) tab.addEventListener('click', () => selectTab(mode));
 });
 
 // Setup forms
 Object.keys(panels).forEach(mode => {
   const panel = panels[mode];
+  if (!panel) return;
   const form = panel.querySelector('form');
   
-  // Ensure Calculate button is visible at start (primary)
+  // Ensure both Calculate and Clear buttons are visible at start
   const actionsInit = panel.querySelector('.actions-below');
   if (actionsInit) {
     actionsInit.classList.remove('hidden'); // ensure container not globally hidden
-    const primaryInit = actionsInit.querySelector('.bar-btn.primary');
-    if (primaryInit) primaryInit.style.display = '';
-    const othersInit = Array.from(actionsInit.querySelectorAll('button')).filter(b => b !== primaryInit);
-    othersInit.forEach(b => b.style.display = 'none');
+    Array.from(actionsInit.querySelectorAll('button')).forEach(b => { b.style.display = ''; });
   }
 
   // Submit handler
@@ -579,8 +588,7 @@ Object.keys(panels).forEach(mode => {
     
     if (!isNaN(result.r)) {
       // Show numeric result and explanatory text separately
-      // show secondary actions because this is a successful calculation
-      showResult(panel, result.htmlNumeric, result.htmlText, true);
+      showResult(panel, result.htmlNumeric, result.htmlText);
       
       // Add to history
       const inputs = readInputsFor(mode);
@@ -593,19 +601,24 @@ Object.keys(panels).forEach(mode => {
       addHistoryEntry(entry);
     } else if (result.htmlText) {
       // Show error (use htmlText as message and htmlNumeric for inline if provided)
-      // do not reveal secondary actions for errors
-      showResult(panel, result.htmlNumeric, result.htmlText, false);
+      showResult(panel, result.htmlNumeric, result.htmlText);
     }
   });
 
-  // Clear button
+  // Clear button — clear inputs for ALL panels
   const clearBtn = panel.querySelector('.clear-btn');
   clearBtn.addEventListener('click', () => {
-    const inputs = panel.querySelectorAll('input[type="text"]');
-    inputs.forEach(inp => inp.value = '');
-    clearResult(panel);
+    // Clear inputs in all panels
+    Object.values(panels).forEach(p => {
+      if (!p) return;
+      const inputsAll = p.querySelectorAll('input[type="text"]');
+      inputsAll.forEach(inp => { inp.value = ''; });
+      // also clear any visible result in each panel
+      clearResult(p);
+    });
+    // Focus first input in currently selected panel
     focusFirstInput();
-    // persist cleared state
+    // persist cleared state across panels
     saveAllInputs();
     updateURL();
   });
@@ -655,24 +668,6 @@ Object.keys(panels).forEach(mode => {
     });
   }
 });
-
-function selectTab(mode, skipUrlUpdate = false) {
-  currentMode = mode;
-
-  // Update tab aria-selected and show/hide panels
-  Object.keys(tabs).forEach(m => {
-    if (tabs[m]) tabs[m].setAttribute('aria-selected', m === mode ? 'true' : 'false');
-    if (panels[m]) panels[m].style.display = m === mode ? 'block' : 'none';
-  });
-
-  // Update URL params to reflect current mode + inputs (unless caller asked to skip)
-  if (!skipUrlUpdate) {
-    updateURL();
-  }
-
-  // Focus the first input in the newly selected panel
-  focusFirstInput();
-}
 
 // Initialize: load stored inputs, then allow URL to override, then render history
 loadAllInputs();
