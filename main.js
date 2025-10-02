@@ -160,8 +160,11 @@ function showToast(msg, duration = 3000) {
   }, duration);
 }
 
-// Small inline SVG for link/copy icon (kept minimal, uses currentColor)
-const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:6px; fill:none; stroke:currentColor; stroke-width:2"><path d="M10 14L21 3"/><path d="M21 14V3H10"/></svg>`;
+// Small inline SVG for copy icon (used for Link buttons and inline result copy)
+const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:6px; fill:none; stroke:currentColor; stroke-width:2">` +
+  `<rect x="9" y="9" width="10" height="10" rx="2"></rect>` +
+  `<path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"></path>` +
+`</svg>`;
 
 // Visual feedback on the copy/link button: temporarily change label, html and disable
 function showCopyButtonFeedback(btn, { label = 'Copied', duration = 2000 } = {}) {
@@ -535,10 +538,12 @@ function renderHistory() {
 
   list.innerHTML = arr.map((item, idx) => {
     return `
-      <div style="display:flex; gap:0.5rem; align-items:center; padding:0.5rem; background:var(--bg-secondary, #f5f5f5); border-radius:0.25rem;">
-        <span style="flex:1; font-size:0.875rem;">${escapeHtml(item.text)}</span>
-        <button class="bar-btn secondary" data-action="load" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Load</button>
-        <button class="bar-btn primary link-copy" data-action="link" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">${LINK_ICON_SVG}<span>Link</span></button>
+      <div class="history-item" data-idx="${idx}">
+        <span class="history-text">${escapeHtml(item.text)}</span>
+        <div class="history-actions">
+          <button class="bar-btn secondary" data-action="load" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Load</button>
+          <button class="bar-btn primary link-copy" data-action="link" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">${LINK_ICON_SVG}<span>Link</span></button>
+        </div>
       </div>
     `;
   }).join('');
@@ -566,25 +571,29 @@ function buildUrlForHistoryItem(item) {
 // History click handler (event delegation)
 $('history-list').addEventListener('click', async (e) => {
   const btn = e.target.closest('button');
-  if (!btn) return;
-  
-  const idx = +btn.dataset.idx;
+  const itemEl = e.target.closest('.history-item');
+  if (!btn && !itemEl) return;
+
+  // determine index and action
+  const idx = +(btn ? btn.dataset.idx : itemEl.dataset.idx);
   const arr = loadHistory();
   const item = arr[idx];
   if (!item) return;
 
-  if (btn.dataset.action === 'link') {
+  const action = btn ? btn.dataset.action : 'load';
+
+  if (action === 'link') {
     // Copy a permalink URL that recreates this calculation
     const url = buildUrlForHistoryItem(item);
     try {
       // Use the unified inline feedback helper for consistency
-      btn.classList.add('link-copy');
-      await copyAndFlash(btn, url, 'Link copied to clipboard', url);
+      if (btn) btn.classList.add('link-copy');
+      await copyAndFlash(btn || itemEl, url, 'Link copied to clipboard', url);
     } catch {
       // fallback to showing the url in a toast if copy somehow fails
       showToast(url, 6000);
     }
-  } else if (btn.dataset.action === 'load') {
+  } else if (action === 'load') {
     selectTab(item.mode, false);
     
     // Hydrate inputs based on mode
@@ -722,6 +731,11 @@ Object.keys(panels).forEach(mode => {
 
     // Make the small copy-link button produce a permalink for this panel (auto=1)
     if (copyBtn) {
+      // ensure the button contains the copy SVG so it can be revealed on hover
+      if (!copyBtn.innerHTML.trim()) copyBtn.innerHTML = `${LINK_ICON_SVG}<span class="sr-only">Copy link for this calculation</span>`;
+      copyBtn.setAttribute('title', 'Copy link for this calculation');
+      copyBtn.setAttribute('aria-label', 'Copy link for this calculation');
+
       makeCopyTarget(copyBtn, () => {
         const params = new URLSearchParams();
         params.set('mode', mode);

@@ -189,14 +189,30 @@ body{
   padding:6px;
   border-radius:6px;
   position:relative;
-  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, opacity 160ms ease, transform 160ms ease;
+  opacity: 0; /* hidden by default, revealed on hover/focus */
+  transform: translateY(2px);
 }
 .result-copy-btn:hover,
 .result-copy-btn:focus {
-  transform: translateY(-2px);
+  transform: translateY(0);
   box-shadow: 0 8px 18px rgba(11,116,255,0.06);
   background: rgba(11,116,255,0.06);
 }
+
+/* Copy-icon visibility: hide SVGs inside link-copy buttons by default,
+   reveal on hover/focus and when the element has .copied or .copy-failed */
+.bar-btn.link-copy svg { opacity: 0; transform: translateX(-4px); transition: opacity 160ms ease, transform 160ms ease; }
+.bar-btn.link-copy:hover svg,
+.bar-btn.link-copy:focus-visible svg,
+.bar-btn.link-copy.copied svg,
+.bar-btn.link-copy.copy-failed svg { opacity: 1; transform: translateX(0); }
+
+/* Make the inline result-copy button visible when the eq-row is hovered or when it is focused or in a copied state */
+.eq-row:hover .result-copy-btn,
+.result-copy-btn:focus-visible,
+.result-copy-btn.copied,
+.result-copy-btn.copy-failed { opacity: 1; transform: translateY(0); }
 
 /* Helper class for history link buttons (so they can share the same UX) */
 .bar-btn.link-copy {
@@ -204,6 +220,9 @@ body{
 }
 
 /* Copied state: small badge (shared for inline value & buttons) */
+.result-inline.copied,
+.result-copy-btn.copied,
+.bar-btn.link-copy.copied { background: rgba(46,139,87,0.08); box-shadow: 0 10px 20px rgba(46,139,87,0.06); }
 .result-inline.copied::after,
 .result-copy-btn.copied::after,
 .bar-btn.link-copy.copied::after {
@@ -239,8 +258,8 @@ body{
 }
 
 /* Make result-inline and copy button visually accessible when copied (subtle bg) */
-.result-inline.copied { background: rgba(46,139,87,0.08); box-shadow: 0 10px 20px rgba(46,139,87,0.06); }
 .result-inline.copy-failed { background: rgba(224,62,62,0.06); box-shadow: 0 8px 16px rgba(224,62,62,0.06); }
+.result-inline.copy-failed::after { content: "Copy failed"; }
 
 /* History */
 .history{margin-top:8px;display:flex;flex-direction:column;gap:8px}
