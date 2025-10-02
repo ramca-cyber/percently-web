@@ -1,18 +1,782 @@
-<!-- Replace the existing `ensureToastStyleInjected` + `showToast` helper in your inline <script> with the version below.
-     This version assumes the toast CSS lives in style.css (see appended block). -->
-<script>
-  // showToast: use centralized CSS rather than injecting styles
-  function showToast(msg, duration = 2500) {
-    const t = document.createElement('div');
-    t.className = 'percently-toast';
-    t.textContent = msg;
-    document.body.appendChild(t);
-    // trigger transition
-    requestAnimationFrame(() => t.classList.add('show'));
-    // remove after timeout
-    setTimeout(() => {
-      t.classList.remove('show');
-      t.addEventListener('transitionend', () => t.remove(), { once: true });
-    }, duration);
-  }
-</script>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Percently — Quick percentage calculator</title>
+  <meta name="description" content="Percently: quick, accurate percentage calculations — large, readable inputs and clear labels." />
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.ico">
+  <!-- Inline tiny transparent favicon to avoid 404 when favicon.ico is missing -->
+  <link rel="icon" href="data:image/x-icon;utf8,AAABAAEAICAAAAEAIACoEAAAFgAAACgAAAAgAAAAQAAAAAEAIAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD///8A" />
+  <style>
+    /* Small helper styles for inline elements we add (kept minimal so main style.css still controls look) */
+    .result-inline { cursor: pointer; user-select: text; }
+    .result-copy-btn {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      border:0;
+      background:transparent;
+      color:inherit;
+      font:inherit;
+      cursor:pointer;
+      padding:6px;
+      border-radius:6px;
+    }
+    .result-copy-btn:focus { outline: 2px solid rgba(11,116,255,0.25); outline-offset:2px; }
+    /* keep actions-below reserved space to avoid layout shift (stable area) */
+    .actions-below { min-height:44px; display:flex; gap:0.5rem; align-items:center; justify-content:center; }
+    .actions-below.hidden > * { display:none; }
+    /* small icon sizing in history */
+    .history .bar-btn svg { vertical-align:middle; margin-right:6px; }
+  </style>
+</head>
+<body>
+  <main class="wrap compact">
+    <header class="site-header compact-header">
+      <h1 class="title">Percently</h1>
+      <p class="subtitle">Submit-based percentage calculator with history.</p>
+    </header>
+
+    <section class="compact-card" aria-label="Calculator">
+      <!-- Tabs for different calculator modes -->
+      <div role="tablist" aria-label="Calculator modes" class="options-row boxed">
+        <button role="tab" aria-selected="true" aria-controls="panel-of" id="tab-of" class="option-card">X% of Y</button>
+        <button role="tab" aria-selected="false" aria-controls="panel-inc" id="tab-inc" class="option-card">Increase by %</button>
+        <button role="tab" aria-selected="false" aria-controls="panel-dec" id="tab-dec" class="option-card">Decrease by %</button>
+        <button role="tab" aria-selected="false" aria-controls="panel-what" id="tab-what" class="option-card">What % is X of Y</button>
+        <button role="tab" aria-selected="false" aria-controls="panel-diff" id="tab-diff" class="option-card">% change A→B</button>
+      </div>
+
+      <!-- Panel: X% of Y -->
+      <div id="panel-of" role="tabpanel" aria-labelledby="tab-of" class="tab-panel">
+        <form class="compact-form" novalidate>
+          <div class="calc-mode">
+            <h2 class="calc-mode-title">X% of Y</h2>
+            <p class="calc-mode-sub">Calculate X percent of Y.</p>
+          </div>
+          <div class="split-rect">
+            <div class="left-col">
+              <div class="input-wrap">
+                <label for="of-x" class="input-caption">X (percent)</label>
+                <input id="of-x" name="x" type="text" inputmode="decimal" placeholder="50" class="big-input">
+              </div>
+              <div class="input-wrap">
+                <label for="of-y" class="input-caption">Y (value)</label>
+                <input id="of-y" name="y" type="text" inputmode="decimal" placeholder="200" class="big-input">
+              </div>
+            </div>
+            <div class="right-col">
+              <div class="input-caption">Result</div>
+              <div class="result-container" style="display:none;">
+                <div class="eq-row">
+                  <div class="equals">=</div>
+                  <div class="result-inline" aria-live="polite"></div>
+                  <button type="button" class="result-copy-btn" title="Copy link for this calculation" aria-label="Copy link for this calculation"></button>
+                </div>
+                <div class="result-msg" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+          <div class="actions-below hidden">
+            <button type="submit" class="bar-btn primary">Calculate</button>
+            <button type="button" class="bar-btn secondary clear-btn">Clear</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Panel: Increase by % -->
+      <div id="panel-inc" role="tabpanel" aria-labelledby="tab-inc" class="tab-panel" style="display:none;">
+        <form class="compact-form" novalidate>
+          <div class="calc-mode">
+            <h2 class="calc-mode-title">Increase by %</h2>
+            <p class="calc-mode-sub">Increase Y by X percent.</p>
+          </div>
+          <div class="split-rect">
+            <div class="left-col">
+              <div class="input-wrap">
+                <label for="inc-x" class="input-caption">X (percent increase)</label>
+                <input id="inc-x" name="x" type="text" inputmode="decimal" placeholder="10" class="big-input">
+              </div>
+              <div class="input-wrap">
+                <label for="inc-y" class="input-caption">Y (base value)</label>
+                <input id="inc-y" name="y" type="text" inputmode="decimal" placeholder="200" class="big-input">
+              </div>
+            </div>
+            <div class="right-col">
+              <div class="input-caption">Result</div>
+              <div class="result-container" style="display:none;">
+                <div class="eq-row">
+                  <div class="equals">=</div>
+                  <div class="result-inline" aria-live="polite"></div>
+                  <button type="button" class="result-copy-btn" title="Copy link for this calculation" aria-label="Copy link for this calculation"></button>
+                </div>
+                <div class="result-msg" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+          <div class="actions-below hidden">
+            <button type="submit" class="bar-btn primary">Calculate</button>
+            <button type="button" class="bar-btn secondary clear-btn">Clear</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Panel: Decrease by % -->
+      <div id="panel-dec" role="tabpanel" aria-labelledby="tab-dec" class="tab-panel" style="display:none;">
+        <form class="compact-form" novalidate>
+          <div class="calc-mode">
+            <h2 class="calc-mode-title">Decrease by %</h2>
+            <p class="calc-mode-sub">Decrease Y by X percent.</p>
+          </div>
+          <div class="split-rect">
+            <div class="left-col">
+              <div class="input-wrap">
+                <label for="dec-x" class="input-caption">X (percent decrease)</label>
+                <input id="dec-x" name="x" type="text" inputmode="decimal" placeholder="10" class="big-input">
+              </div>
+              <div class="input-wrap">
+                <label for="dec-y" class="input-caption">Y (base value)</label>
+                <input id="dec-y" name="y" type="text" inputmode="decimal" placeholder="200" class="big-input">
+              </div>
+            </div>
+            <div class="right-col">
+              <div class="input-caption">Result</div>
+              <div class="result-container" style="display:none;">
+                <div class="eq-row">
+                  <div class="equals">=</div>
+                  <div class="result-inline" aria-live="polite"></div>
+                  <button type="button" class="result-copy-btn" title="Copy link for this calculation" aria-label="Copy link for this calculation"></button>
+                </div>
+                <div class="result-msg" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+          <div class="actions-below hidden">
+            <button type="submit" class="bar-btn primary">Calculate</button>
+            <button type="button" class="bar-btn secondary clear-btn">Clear</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Panel: What % is X of Y -->
+      <div id="panel-what" role="tabpanel" aria-labelledby="tab-what" class="tab-panel" style="display:none;">
+        <form class="compact-form" novalidate>
+          <div class="calc-mode">
+            <h2 class="calc-mode-title">What % is X of Y</h2>
+            <p class="calc-mode-sub">Find what percent X is of Y.</p>
+          </div>
+          <div class="split-rect">
+            <div class="left-col">
+              <div class="input-wrap">
+                <label for="what-a" class="input-caption">A (part)</label>
+                <input id="what-a" name="a" type="text" inputmode="decimal" placeholder="25" class="big-input">
+              </div>
+              <div class="input-wrap">
+                <label for="what-b" class="input-caption">B (whole)</label>
+                <input id="what-b" name="b" type="text" inputmode="decimal" placeholder="200" class="big-input">
+              </div>
+            </div>
+            <div class="right-col">
+              <div class="input-caption">Result</div>
+              <div class="result-container" style="display:none;">
+                <div class="eq-row">
+                  <div class="equals">=</div>
+                  <div class="result-inline" aria-live="polite"></div>
+                  <button type="button" class="result-copy-btn" title="Copy link for this calculation" aria-label="Copy link for this calculation"></button>
+                </div>
+                <div class="result-msg" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+          <div class="actions-below hidden">
+            <button type="submit" class="bar-btn primary">Calculate</button>
+            <button type="button" class="bar-btn secondary clear-btn">Clear</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Panel: % change A→B (NEW) -->
+      <div id="panel-diff" role="tabpanel" aria-labelledby="tab-diff" class="tab-panel" style="display:none;">
+        <form class="compact-form" novalidate>
+          <div class="calc-mode">
+            <h2 class="calc-mode-title">% change A→B</h2>
+            <p class="calc-mode-sub">Calculate directional percent change from old to new.</p>
+          </div>
+          <div class="split-rect">
+            <div class="left-col">
+              <div class="input-wrap">
+                <label for="diff-old" class="input-caption">Old (A)</label>
+                <input id="diff-old" name="old" type="text" inputmode="decimal" placeholder="100" class="big-input">
+              </div>
+              <div class="input-wrap">
+                <label for="diff-new" class="input-caption">New (B)</label>
+                <input id="diff-new" name="new" type="text" inputmode="decimal" placeholder="120" class="big-input">
+              </div>
+            </div>
+            <div class="right-col">
+              <div class="input-caption">Result</div>
+              <div class="result-container" style="display:none;">
+                <div class="eq-row">
+                  <div class="equals">=</div>
+                  <div class="result-inline" aria-live="polite"></div>
+                  <button type="button" class="result-copy-btn" title="Copy link for this calculation" aria-label="Copy link for this calculation"></button>
+                </div>
+                <div class="result-msg" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+          <div class="actions-below hidden">
+            <button type="submit" class="bar-btn primary">Calculate</button>
+            <button type="button" class="bar-btn secondary clear-btn">Clear</button>
+          </div>
+        </form>
+      </div>
+
+      <footer class="compact-footer">
+        <div style="display:flex; gap:0.5rem; justify-content:center; align-items:center; margin-top:8px;">
+          <button id="clear-history" class="bar-btn secondary">Clear history</button>
+        </div>
+      </footer>
+
+      <aside style="margin-top:12px;">
+        <h3 style="margin:0 0 8px 0;">History</h3>
+        <div id="history-list" class="history" aria-live="polite"></div>
+      </aside>
+    </section>
+
+    <footer class="compact-footer" style="text-align:center; margin-top:18px;">
+      <small style="color:var(--muted);">Percently — quick percentage calculations</small>
+    </footer>
+  </main>
+
+  <script>
+  // Inline script implementing submit-only results, structured history, share URLs with auto=1,
+  // result copy-link button, accessible tabs/panels, stable layout, clipboard usage,
+  // and a small toast. This replaces the previous main.js behavior while preserving layout.
+
+  (function () {
+    // Utility helpers
+    const HISTORY_KEY = 'percently_history_v3';
+    const MAX_HISTORY = 30;
+
+    function $(id) { return document.getElementById(id); }
+    function qs(sel, root=document) { return root.querySelector(sel); }
+    function qsa(sel, root=document) { return Array.from(root.querySelectorAll(sel)); }
+    function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+    function formatNumber(value, { maxDecimals = 2, minDecimals = 0 } = {}) {
+      const v = Number(value);
+      if (!isFinite(v)) return String(value);
+      const isIntegerish = Math.abs(Math.round(v) - v) < 1e-12;
+      if (isIntegerish) return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(Math.round(v));
+      return new Intl.NumberFormat(undefined, { minimumFractionDigits: minDecimals, maximumFractionDigits: maxDecimals }).format(v);
+    }
+
+    // Calculation functions (same semantics as calc.js)
+    function percentOf(x,y){ return (Number(x)/100)*Number(y); }
+    function increaseBy(x,y){ return Number(y) + (Number(x)/100)*Number(y); }
+    function decreaseBy(x,y){ return Number(y) - (Number(x)/100)*Number(y); }
+    function percentDifference(x,y){
+      const a=Number(x), b=Number(y);
+      if (a===0 && b===0) return 0;
+      const denom=(Math.abs(a)+Math.abs(b))/2;
+      if (denom===0) throw new Error('Denominator is zero');
+      return (Math.abs(a-b)/denom)*100;
+    }
+    function whatPercent(x,y){
+      if (Number(y)===0) throw new Error('Divide by zero');
+      return (Number(x)/Number(y))*100;
+    }
+    function percentChange(oldVal,newVal){
+      const a=Number(oldVal), b=Number(newVal);
+      if (a===0) throw new Error('Old value cannot be zero');
+      return ((b-a)/a)*100;
+    }
+
+    // Tab & panel setup
+    const tabs = {
+      of: $('tab-of'),
+      inc: $('tab-inc'),
+      dec: $('tab-dec'),
+      what: $('tab-what'),
+      diff: $('tab-diff')
+    };
+    const panels = {
+      of: $('panel-of'),
+      inc: $('panel-inc'),
+      dec: $('panel-dec'),
+      what: $('panel-what'),
+      diff: $('panel-diff')
+    };
+    let currentMode = 'of';
+
+    function selectTab(mode, skipUrl) {
+      if (!panels[mode]) return;
+      currentMode = mode;
+      Object.keys(tabs).forEach(m => {
+        tabs[m].setAttribute('aria-selected', m===mode ? 'true' : 'false');
+        panels[m].style.display = m===mode ? 'block' : 'none';
+      });
+      if (!skipUrl) updateURL();
+      focusFirstInput();
+    }
+
+    function focusFirstInput() {
+      const panel = panels[currentMode];
+      const first = panel && panel.querySelector('input[type="text"]');
+      if (first) first.focus();
+    }
+
+    // Read/hydrate inputs (structured per panel)
+    function readInputsFor(mode) {
+      if (mode === 'of') {
+        return { x: ($('of-x')||{}).value?.trim()||'', y: ($('of-y')||{}).value?.trim()||'' };
+      } else if (mode === 'inc') {
+        return { x: ($('inc-x')||{}).value?.trim()||'', y: ($('inc-y')||{}).value?.trim()||'' };
+      } else if (mode === 'dec') {
+        return { x: ($('dec-x')||{}).value?.trim()||'', y: ($('dec-y')||{}).value?.trim()||'' };
+      } else if (mode === 'what') {
+        return { a: ($('what-a')||{}).value?.trim()||'', b: ($('what-b')||{}).value?.trim()||'' };
+      } else if (mode === 'diff') {
+        return { old: ($('diff-old')||{}).value?.trim()||'', new: ($('diff-new')||{}).value?.trim()||'' };
+      }
+      return {};
+    }
+
+    function hydrateInputsFromParams(params) {
+      // Accept both x/y and a/b or old/new depending on mode, but populate the corresponding fields
+      if (params.has('x') && $('of-x')) $('of-x').value = params.get('x');
+      if (params.has('y') && $('of-y')) $('of-y').value = params.get('y');
+
+      if (params.has('x') && $('inc-x')) $('inc-x').value = params.get('x');
+      if (params.has('y') && $('inc-y')) $('inc-y').value = params.get('y');
+
+      if (params.has('x') && $('dec-x')) $('dec-x').value = params.get('x');
+      if (params.has('y') && $('dec-y')) $('dec-y').value = params.get('y');
+
+      if (params.has('a') && $('what-a')) $('what-a').value = params.get('a');
+      if (params.has('b') && $('what-b')) $('what-b').value = params.get('b');
+
+      if (params.has('old') && $('diff-old')) $('diff-old').value = params.get('old');
+      if (params.has('new') && $('diff-new')) $('diff-new').value = params.get('new');
+    }
+
+    // URL helpers
+    function updateURL() {
+      const params = new URLSearchParams();
+      params.set('mode', currentMode);
+      const inputs = readInputsFor(currentMode);
+      Object.keys(inputs).forEach(k => {
+        if (inputs[k]) params.set(k, inputs[k]);
+      });
+      const newUrl = window.location.pathname + '?' + params.toString();
+      window.history.replaceState({}, '', newUrl);
+    }
+
+    function buildUrlFor(mode, paramsObj, auto=true) {
+      const params = new URLSearchParams();
+      params.set('mode', mode);
+      Object.keys(paramsObj||{}).forEach(k => {
+        if (paramsObj[k]) params.set(k, paramsObj[k]);
+      });
+      if (auto) params.set('auto','1');
+      return window.location.origin + window.location.pathname + '?' + params.toString();
+    }
+
+    // Compute logic (submit-only)
+    function computeNow(mode) {
+      let r = NaN, htmlNumeric = '', htmlText = '', text = '';
+      const N = (n) => formatNumber(Number(n), { maxDecimals: 2 });
+      const N4 = (n) => formatNumber(Number(n), { maxDecimals: 4 });
+
+      if (mode === 'of') {
+        const x = Number(normalize(($('of-x')||{}).value)); const y = Number(normalize(($('of-y')||{}).value));
+        if (!isNaN(x) && !isNaN(y)) {
+          r = percentOf(x,y);
+          htmlNumeric = `<strong>${N(r)}</strong>`;
+          htmlText = `${N(x)}% of ${N(y)} = ${N(r)}`;
+          text = `${x}% of ${y} = ${r}`;
+        }
+      } else if (mode === 'inc') {
+        const x = Number(normalize(($('inc-x')||{}).value)); const y = Number(normalize(($('inc-y')||{}).value));
+        if (!isNaN(x) && !isNaN(y)) {
+          r = increaseBy(x,y);
+          htmlNumeric = `<strong>${N(r)}</strong>`;
+          htmlText = `${N(y)} increased by ${N(x)}% = ${N(r)}`;
+          text = `${y} increased by ${x}% = ${r}`;
+        }
+      } else if (mode === 'dec') {
+        const x = Number(normalize(($('dec-x')||{}).value)); const y = Number(normalize(($('dec-y')||{}).value));
+        if (!isNaN(x) && !isNaN(y)) {
+          r = decreaseBy(x,y);
+          htmlNumeric = `<strong>${N(r)}</strong>`;
+          htmlText = `${N(y)} decreased by ${N(x)}% = ${N(r)}`;
+          text = `${y} decreased by ${x}% = ${r}`;
+        }
+      } else if (mode === 'what') {
+        const a = Number(normalize(($('what-a')||{}).value)); const b = Number(normalize(($('what-b')||{}).value));
+        if (!isNaN(a) && !isNaN(b)) {
+          try {
+            r = whatPercent(a,b);
+            htmlNumeric = `<strong>${N(r)}%</strong>`;
+            htmlText = `${N(a)} is ${N(r)}% of ${N(b)}`;
+            text = `${a} is ${r}% of ${b}`;
+          } catch (err) {
+            htmlNumeric = `<span style="color:var(--danger);">${err.message}</span>`;
+            htmlText = err.message;
+            text = err.message;
+          }
+        }
+      } else if (mode === 'diff') {
+        const oldVal = Number(normalize(($('diff-old')||{}).value)); const newV = Number(normalize(($('diff-new')||{}).value));
+        if (!isNaN(oldVal) && !isNaN(newV)) {
+          if (oldVal === 0) {
+            htmlNumeric = `<span style="color:var(--danger);">Cannot calculate</span>`;
+            htmlText = 'Cannot calculate: Old value is zero';
+            text = 'Cannot calculate: Old value is zero';
+          } else {
+            r = ((newV-oldVal)/oldVal)*100;
+            const lbl = r>0 ? 'increase' : (r<0 ? 'decrease' : 'no change');
+            htmlNumeric = `<strong>${N4(r)}%</strong>`;
+            htmlText = `${N(oldVal)} → ${N(newV)} = ${N4(r)}% ${lbl}`;
+            text = `${oldVal} → ${newV} = ${r}% ${lbl}`;
+          }
+        }
+      }
+
+      return { r, htmlNumeric, htmlText, text };
+    }
+
+    // normalize number input (accept comma/dot)
+    function normalize(v) {
+      if (typeof v !== 'string') return v;
+      return v.trim().replace(',', '.');
+    }
+
+    // Result visibility + action bar control
+    function clearResultForPanel(panelEl) {
+      const rc = panelEl.querySelector('.result-container');
+      if (rc) rc.style.display = 'none';
+      const actions = panelEl.querySelector('.actions-below');
+      if (actions) actions.classList.add('hidden');
+      // clear content
+      if (rc) {
+        const inline = rc.querySelector('.result-inline');
+        const msg = rc.querySelector('.result-msg');
+        if (inline) inline.innerHTML = '';
+        if (msg) msg.textContent = '';
+      }
+    }
+
+    function showResultForPanel(panelEl, result, addAction=true) {
+      const rc = panelEl.querySelector('.result-container');
+      if (!rc) return;
+      const inline = rc.querySelector('.result-inline');
+      const msg = rc.querySelector('.result-msg');
+      inline.innerHTML = result.htmlNumeric || '';
+      msg.innerHTML = result.htmlText || '';
+      rc.style.display = 'block';
+      const actions = panelEl.querySelector('.actions-below');
+      if (actions) {
+        if (addAction) actions.classList.remove('hidden');
+        else actions.classList.add('hidden');
+      }
+    }
+
+    // Structured history management
+    function loadHistory() {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }
+    function saveHistory(arr) {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(arr.slice(0, MAX_HISTORY)));
+    }
+    function addHistoryEntry(entry) {
+      const arr = loadHistory();
+      if (arr.length && JSON.stringify(arr[0]) === JSON.stringify(entry)) return; // skip immediate duplicate
+      arr.unshift(entry);
+      saveHistory(arr);
+      renderHistory();
+    }
+
+    // Render history list with Load and Link
+    function renderHistory() {
+      const list = $('history-list');
+      const arr = loadHistory();
+      if (!list) return;
+      if (arr.length === 0) {
+        list.innerHTML = '<p style="color:var(--muted); text-align:center;">No history yet.</p>';
+        return;
+      }
+      list.innerHTML = arr.map((item, idx) => {
+        const txt = escapeHtml(item.text || '');
+        const icon = LINK_ICON_SVG;
+        return `
+          <div style="display:flex; gap:0.5rem; align-items:center; padding:0.5rem; background:var(--bg-secondary, #f5f5f5); border-radius:0.25rem;">
+            <span style="flex:1; font-size:0.875rem;">${txt}</span>
+            <button class="bar-btn secondary" data-action="load" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Load</button>
+            <button class="bar-btn primary" data-action="link" data-idx="${idx}" data-orig-html='${icon}<span>Link</span>' style="padding:0.25rem 0.5rem; font-size:0.75rem;">${icon}<span>Link</span></button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Click handler for history (delegation)
+    $('history-list').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const idx = Number(btn.dataset.idx);
+      const arr = loadHistory();
+      const item = arr[idx];
+      if (!item) return;
+
+      if (btn.dataset.action === 'link') {
+        const url = buildUrlFor(item.mode, item.params, true);
+        try {
+          await navigator.clipboard.writeText(url);
+          showToast('Link copied to clipboard');
+          showCopyButtonFeedback(btn);
+        } catch (err) {
+          alert(url);
+        }
+      } else if (btn.dataset.action === 'load') {
+        // Rehydrate inputs into right panel (do not compute)
+        selectTab(item.mode, false);
+        hydrateInputsFromObject(item.params);
+        // hide results and actions
+        clearResultForPanel(panels[item.mode]);
+      }
+    });
+
+    function hydrateInputsFromObject(obj) {
+      if (!obj) return;
+      if (obj.x !== undefined) { if ($('of-x')) $('of-x').value = obj.x; if ($('inc-x')) $('inc-x').value = obj.x; if ($('dec-x')) $('dec-x').value = obj.x; }
+      if (obj.y !== undefined) { if ($('of-y')) $('of-y').value = obj.y; if ($('inc-y')) $('inc-y').value = obj.y; if ($('dec-y')) $('dec-y').value = obj.y; }
+      if (obj.a !== undefined) { if ($('what-a')) $('what-a').value = obj.a; }
+      if (obj.b !== undefined) { if ($('what-b')) $('what-b').value = obj.b; }
+      if (obj.old !== undefined) { if ($('diff-old')) $('diff-old').value = obj.old; }
+      if (obj.new !== undefined) { if ($('diff-new')) $('diff-new').value = obj.new; }
+    }
+
+    // Toast and UI feedback
+    const TOAST_CLASS = 'percently-toast';
+    function ensureToastStyleInjected() {
+      if (document.getElementById('percently-toast-style')) return;
+      const st = document.createElement('style');
+      st.id = 'percently-toast-style';
+      st.textContent = `
+        :root {
+          --toast-bg: rgba(6,36,58,0.95);
+          --toast-color: #fff;
+          --toast-padding: 8px 14px;
+          --toast-radius: 8px;
+          --toast-shadow: 0 8px 24px rgba(0,0,0,0.25);
+          --toast-z: 99999;
+          --toast-font-size: 13px;
+        }
+        .${TOAST_CLASS} {
+          position: fixed;
+          bottom: 16px;
+          left: 50%;
+          transform: translateX(-50%) translateY(8px);
+          background: var(--toast-bg);
+          color: var(--toast-color);
+          padding: var(--toast-padding);
+          border-radius: var(--toast-radius);
+          box-shadow: var(--toast-shadow);
+          z-index: var(--toast-z);
+          opacity: 0;
+          transition: opacity 160ms ease, transform 160ms ease;
+          font-size: var(--toast-font-size);
+          pointer-events: none;
+        }
+        .${TOAST_CLASS}.show {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      `;
+      document.head.appendChild(st);
+    }
+    function showToast(msg, duration=2500) {
+      ensureToastStyleInjected();
+      const t = document.createElement('div');
+      t.className = TOAST_CLASS;
+      t.textContent = msg;
+      document.body.appendChild(t);
+      requestAnimationFrame(() => t.classList.add('show'));
+      setTimeout(() => {
+        t.classList.remove('show');
+        t.addEventListener('transitionend', () => t.remove(), { once: true });
+      }, duration);
+    }
+
+    // Small SVG icon used for Link and copy icons
+    const LINK_ICON_SVG = '<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:6px; fill:none; stroke:currentColor; stroke-width:1.6;"><path stroke-linecap="round" stroke-linejoin="round" d="M10.59 13.41a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10.59 6.34"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.41 10.59a5 5 0 0 0-7.07 0L4.93 12a5 5 0 0 0 7.07 7.07L13.41 18"/></svg>';
+
+    function showCopyButtonFeedback(btn, { label='Copied', duration=2000 } = {}) {
+      if (!btn) return;
+      if (!btn.dataset.origHtml) btn.dataset.origHtml = btn.innerHTML;
+      btn.innerHTML = LINK_ICON_SVG + '<span>' + label + '</span>';
+      btn.disabled = true;
+      btn.style.background = '#2E8B57';
+      btn.style.color = '#fff';
+      setTimeout(()=> {
+        btn.disabled = false;
+        btn.innerHTML = btn.dataset.origHtml || (LINK_ICON_SVG + '<span>Link</span>');
+        btn.style.background = '';
+        btn.style.color = '';
+      }, duration);
+    }
+
+    // Initialize: clear all result panels to ensure submit-only behavior and stable layout
+    Object.keys(panels).forEach(m => clearResultForPanel(panels[m]));
+
+    // Setup tab buttons
+    Object.keys(tabs).forEach(mode => {
+      tabs[mode].addEventListener('click', () => selectTab(mode));
+    });
+
+    // Wire up forms: submit-only compute, inputs clear result on change + update URL
+    Object.keys(panels).forEach(mode => {
+      const panel = panels[mode];
+      const form = panel.querySelector('form');
+      const inputs = qsa('input[type="text"]', panel);
+
+      // Submit handler (Calculate or Enter)
+      form.addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        const result = computeNow(mode);
+        if (!isNaN(result.r)) {
+          showResultForPanel(panel, result, true);
+          // Build structured params for history entry (consistent with readInputsFor)
+          const params = readInputsFor(mode);
+          const entry = { mode, params, text: result.text, value: result.r };
+          addHistoryEntry(entry);
+        } else if (result.htmlText) {
+          // in case of error, show message but do not add to history or show action bar
+          showResultForPanel(panel, result, false);
+        }
+      });
+
+      // Clear button
+      const clearBtn = panel.querySelector('.clear-btn');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          inputs.forEach(i => i.value = '');
+          clearResultForPanel(panel);
+          updateURL();
+        });
+      }
+
+      // Input change handlers: clear result, update URL
+      inputs.forEach(inp => {
+        inp.addEventListener('input', () => {
+          clearResultForPanel(panel);
+          updateURL();
+        });
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            form.dispatchEvent(new Event('submit'));
+          }
+        });
+      });
+
+      // result copy-link button inside panel: copy permalink of current inputs with auto=1 (does not add history)
+      const rc = panel.querySelector('.result-container');
+      if (rc) {
+        // place icon into the button
+        const copyBtn = rc.querySelector('.result-copy-btn');
+        if (copyBtn) copyBtn.innerHTML = LINK_ICON_SVG + '<span>Link</span>';
+        rc.addEventListener('click', async (ev) => {
+          // clicking the inline numeric value should copy numeric value to clipboard
+          const inline = rc.querySelector('.result-inline');
+          if (!inline) return;
+          const clickedInline = ev.target.closest('.result-inline');
+          if (clickedInline) {
+            const valueText = inline.textContent ? inline.textContent.trim() : '';
+            if (!valueText) { showToast('Nothing to copy'); return; }
+            try {
+              await navigator.clipboard.writeText(valueText);
+              showToast('Value copied to clipboard');
+            } catch (err) {
+              alert(valueText);
+            }
+            return;
+          }
+          // If click on copy button (or it was clicked)
+          const btn = ev.target.closest('.result-copy-btn');
+          if (btn) {
+            // build permalink for current panel inputs
+            const params = readInputsFor(mode);
+            const url = buildUrlFor(mode, params, true);
+            try {
+              await navigator.clipboard.writeText(url);
+              showToast('Link copied to clipboard');
+              // visual feedback on that button
+              btn.disabled = true;
+              const orig = btn.innerHTML;
+              btn.innerHTML = LINK_ICON_SVG + '<span>Copied</span>';
+              btn.style.background = '#2E8B57';
+              btn.style.color = '#fff';
+              setTimeout(()=> { btn.disabled=false; btn.innerHTML = orig; btn.style.background=''; btn.style.color=''; }, 1800);
+            } catch (err) {
+              alert(url);
+            }
+          }
+        });
+      }
+    });
+
+    // Initialize history UI and URL hydrate
+    renderHistory();
+
+    // Utility: load from URL and optionally auto compute
+    (function loadFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode');
+      const auto = params.get('auto') === '1';
+      if (mode && panels[mode]) selectTab(mode, true);
+      hydrateInputsFromParams(params);
+      // clear all results
+      Object.keys(panels).forEach(m => clearResultForPanel(panels[m]));
+      if (auto && mode && panels[mode]) {
+        const result = computeNow(mode);
+        if (!isNaN(result.r)) {
+          showResultForPanel(panels[mode], result, false);
+        } else if (result.htmlText) {
+          showResultForPanel(panels[mode], result, false);
+        }
+      }
+      if (mode) currentMode = mode;
+      updateURL();
+    })();
+
+    // Accessibility: keyboard left/right for tabs
+    Object.keys(tabs).forEach(key => {
+      const btn = tabs[key];
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          const keys = Object.keys(tabs);
+          const idx = keys.indexOf(key);
+          const nextIdx = e.key === 'ArrowRight' ? (idx+1)%keys.length : (idx-1+keys.length)%keys.length;
+          tabs[keys[nextIdx]].focus();
+          selectTab(keys[nextIdx]);
+          e.preventDefault();
+        }
+      });
+    });
+
+    // Expose a small API for debugging if needed
+    window.percently = { computeNow, buildUrlFor, readInputsFor, loadHistory, addHistoryEntry };
+
+  })();
+  </script>
+
+  <!-- Recommended minimal Content-Security-Policy (comment for server configuration)
+    Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
+    base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none';
+  -->
+</body>
+</html>
