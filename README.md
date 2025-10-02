@@ -1,3 +1,4 @@
+```markdown
 # Percently
 
 A small, responsive percentage calculator web app — X% of Y, increase/decrease, percent difference, and more.
