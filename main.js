@@ -161,7 +161,7 @@ function showToast(msg, duration = 3000) {
 }
 
 // Small inline SVG for link/copy icon (kept minimal, uses currentColor)
-const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:6px; fill:none; stroke:currentColor; stroke-width:1.6;"><path stroke-linecap="round" stroke-linejoin="round" d="M10.59 13.41a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10.59 6.34"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.41 10.59a5 5 0 0 0-7.07 0L4.93 12a5 5 0 0 0 7.07 7.07L13.41 18"/></svg>`;
+const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:6px; fill:none; stroke:currentColor; stroke-width:2"><path d="M10 14L21 3"/><path d="M21 14V3H10"/></svg>`;
 
 // Visual feedback on the copy/link button: temporarily change label, html and disable
 function showCopyButtonFeedback(btn, { label = 'Copied', duration = 2000 } = {}) {
@@ -659,7 +659,7 @@ Object.keys(panels).forEach(mode => {
       const entry = {
         mode,
         params: inputs,
-        text: result.text,
+        text: result.htmlText,
         value: result.r
       };
       addHistoryEntry(entry);
