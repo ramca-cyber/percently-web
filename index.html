@@ -52,18 +52,19 @@
               <div class="equals" id="equals">=</div>
               <div id="result" class="result-inline" aria-live="polite" title=""></div>
             </div>
+
+            <!-- moved result message inside the right column so the explanatory text appears under the inline result -->
+            <div id="result-msg" class="result-msg" aria-live="polite"></div>
           </div>
         </div>
 
-        <!-- Actions (below the main rectangle) -->
+        <!-- Actions (below the main rectangle) - centered -->
         <div class="actions-below">
           <button type="submit" id="calculate" class="bar-btn primary" aria-label="Calculate">Calculate</button>
           <button type="button" id="clear" class="bar-btn secondary" aria-label="Clear">Clear</button>
         </div>
 
-        <div id="result-msg" class="result-msg" aria-hidden="true"></div>
-
-        <!-- Calculation options inside the same card (boxed row) -->
+        <!-- Calculation options inside the same card (boxed row) - centered -->
         <fieldset class="options-row boxed" role="radiogroup" aria-label="Select calculation" id="options-row">
           <legend class="sr-only">Calculation type</legend>
 
