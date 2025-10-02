@@ -154,7 +154,7 @@ function refreshUIForMode() {
   xInput.focus();
 }
 
-// show inline result and tooltip
+// show inline result and tooltip + put friendly message under the inline result
 function showInlineResult(res) {
   if (!res) return;
   if (!res.ok) {
@@ -168,8 +168,12 @@ function showInlineResult(res) {
 
   resultInline.textContent = res.display;
   resultInline.style.color = 'var(--accent)';
+
+  // tooltip shows full sentence + exact value
   const exact = (typeof res.out === 'number' && isFinite(res.out)) ? fullPrecisionString(res.out) : '';
   resultInline.title = res.msg + (exact ? ` — Exact: ${exact}` : '');
+
+  // show the same friendly explanation below the inline result in the right column
   resultMsg.textContent = res.msg;
   resultMsg.style.color = 'var(--muted)';
 }
@@ -190,8 +194,8 @@ const debounced = debounce(() => {
 radios.forEach(r => r.addEventListener('change', () => { refreshUIForMode(); if (autoCalc) debounced(); }));
 [xInput, yInput].forEach(inp => { inp.addEventListener('input', () => { if (autoCalc) debounced(); }); inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const type = document.querySelector('input[name=\"calc\"]:checked').value; const res = calculate(type, xInput.value.trim(), yInput.value.trim()); showInlineResult(res); } }); });
 
-document.getElementById('calculate').addEventListener('click', (e) => { e.preventDefault(); const type = document.querySelector('input[name=\"calc\"]:checked').value; const res = calculate(type, xInput.value.trim(), yInput.value.trim()); showInlineResult(res); });
-document.getElementById('clear').addEventListener('click', () => { xInput.value=''; yInput.value=''; resultInline.textContent=''; resultInline.removeAttribute('title'); resultMsg.textContent=''; xInput.focus(); });
+calcBtn.addEventListener('click', (e) => { e.preventDefault(); const type = document.querySelector('input[name=\"calc\"]:checked').value; const res = calculate(type, xInput.value.trim(), yInput.value.trim()); showInlineResult(res); });
+clearBtn.addEventListener('click', () => { xInput.value=''; yInput.value=''; resultInline.textContent=''; resultInline.removeAttribute('title'); resultMsg.textContent=''; xInput.focus(); });
 
 // init
 refreshUIForMode();
