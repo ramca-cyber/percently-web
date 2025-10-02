@@ -349,7 +349,7 @@ function showResult(panelEl, htmlNumeric, htmlText, showSecondary = true) {
     const primary = actions.querySelector('.bar-btn.primary');
     const others = Array.from(actions.querySelectorAll('button')).filter(b => b !== primary);
     if (showSecondary) {
-      others.forEach(b => b.style.display = ''; 
+      others.forEach(b => b.style.display = '');
     } else {
       others.forEach(b => b.style.display = 'none');
     }
@@ -357,25 +357,6 @@ function showResult(panelEl, htmlNumeric, htmlText, showSecondary = true) {
   }
 
   // aria-live areas on the DOM will announce as appropriate
-}
-
-// Tab selection
-function selectTab(mode, skipUrlUpdate = false) {
-  currentMode = mode;
-  
-  // Update tab aria-selected
-  Object.keys(tabs).forEach(m => {
-    tabs[m].setAttribute('aria-selected', m === mode ? 'true' : 'false');
-    panels[m].style.display = m === mode ? 'block' : 'none';
-  });
-
-  // Update URL
-  if (!skipUrlUpdate) {
-    updateURL();
-  }
-
-  // Focus first input
-  focusFirstInput();
 }
 
 // Focus first input in current panel
