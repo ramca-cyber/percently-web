@@ -146,55 +146,127 @@ function loadAllInputs() {
   }
 }
 
-// Small toast helper to show non-blocking feedback
+// Insert toast CSS that uses CSS variables (if it isn't already present)
+function ensureToastStyles() {
+  if (document.getElementById('percently-toast-styles')) return;
+  const css = `
+  :root {
+    --toast-bg: rgba(6,36,58,0.95);
+    --toast-color: #fff;
+    --toast-padding: 8px 14px;
+    --toast-radius: 8px;
+    --toast-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    --toast-z: 99999;
+    --toast-font-size: 13px;
+  }
+  .percently-toast {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--toast-bg);
+    color: var(--toast-color);
+    padding: var(--toast-padding);
+    border-radius: var(--toast-radius);
+    box-shadow: var(--toast-shadow);
+    z-index: var(--toast-z);
+    opacity: 0;
+    transition: opacity 180ms ease, transform 180ms ease;
+    font-size: var(--toast-font-size);
+    pointer-events: none;
+  }
+  .percently-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }`;
+  const st = document.createElement('style');
+  st.id = 'percently-toast-styles';
+  st.textContent = css;
+  document.head.appendChild(st);
+}
+
+// Small toast helper to show non-blocking feedback (uses CSS variables defined above)
 function showToast(msg, duration = 3000) {
+  ensureToastStyles();
   const t = document.createElement('div');
+  t.className = 'percently-toast';
   t.textContent = msg;
-  Object.assign(t.style, {
-    position: 'fixed',
-    bottom: '16px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    background: 'rgba(6,36,58,0.95)',
-    color: '#fff',
-    padding: '8px 14px',
-    borderRadius: '8px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-    zIndex: 99999,
-    opacity: '0',
-    transition: 'opacity 180ms ease'
-  });
   document.body.appendChild(t);
-  // fade in
-  requestAnimationFrame(() => { t.style.opacity = '1'; });
-  // fade out & remove
+  // Force reflow then add class to trigger transition
+  requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => {
-    t.style.opacity = '0';
+    t.classList.remove('show');
     t.addEventListener('transitionend', () => t.remove(), { once: true });
   }, duration);
 }
 
-// Visual feedback on the copy button: temporarily change label, style and disable
+// Small inline SVG for link/copy icon (kept minimal, uses currentColor)
+const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:6px; fill:none; stroke:currentColor; stroke-width:1.6;"><path stroke-linecap="round" stroke-linejoin="round" d="M10.59 13.41a5 5 0 0 0 7.07 0l1.41-1.41a5 5 0 0 0-7.07-7.07L10.59 6.34"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.41 10.59a5 5 0 0 0-7.07 0L4.93 12a5 5 0 0 0 7.07 7.07L13.41 18"/></svg>`;
+
+// Visual feedback on the copy/link button: temporarily change label, html and disable
 function showCopyButtonFeedback(btn, { label = 'Copied', duration = 2000 } = {}) {
   if (!btn) return;
-  // store original label and styles if not already stored
-  if (!btn.dataset.origLabel) btn.dataset.origLabel = btn.textContent || 'Copy';
+  // store original html if not already stored
+  if (!btn.dataset.origHtml) btn.dataset.origHtml = btn.innerHTML;
   if (!btn.dataset.origBg) btn.dataset.origBg = btn.style.background || '';
   if (!btn.dataset.origColor) btn.dataset.origColor = btn.style.color || '';
 
-  // apply feedback state
-  btn.textContent = label;
+  // apply feedback state (keep icon + label)
+  btn.innerHTML = `${LINK_ICON_SVG}<span style="vertical-align:middle;">${label}</span>`;
   btn.disabled = true;
-  btn.style.background = '#2E8B57'; // green
+  btn.style.background = '#2E8B57'; // success green
   btn.style.color = '#fff';
 
   // revert after timeout
   setTimeout(() => {
     btn.disabled = false;
-    btn.textContent = btn.dataset.origLabel || 'Copy';
+    btn.innerHTML = btn.dataset.origHtml || (LINK_ICON_SVG + '<span>Link</span>');
     btn.style.background = btn.dataset.origBg || '';
     btn.style.color = btn.dataset.origColor || '';
   }, duration);
+}
+
+// Generic copy-to-clipboard with fallback; returns Promise<boolean>
+function copyTextToClipboard(text) {
+  return new Promise((resolve) => {
+    if (!text) return resolve(false);
+    // primary: Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => resolve(true)).catch(() => {
+        // fallback to execCommand
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand && document.execCommand('copy');
+          ta.remove();
+          resolve(!!ok);
+        } catch {
+          resolve(false);
+        }
+      });
+      return;
+    }
+
+    // older fallback
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand && document.execCommand('copy');
+      ta.remove();
+      resolve(!!ok);
+    } catch {
+      resolve(false);
+    }
+  });
 }
 
 // Compute result for current mode
@@ -410,12 +482,13 @@ function renderHistory() {
   }
 
   list.innerHTML = arr.map((item, idx) => {
-    // include data-orig-label so we can revert button text after feedback
+    // include data-orig-html so feedback can restore markup (icon + label)
+    const itemText = escapeHtml(item.text);
     return `
       <div style="display:flex; gap:0.5rem; align-items:center; padding:0.5rem; background:var(--bg-secondary, #f5f5f5); border-radius:0.25rem;">
-        <span style="flex:1; font-size:0.875rem;">${escapeHtml(item.text)}</span>
+        <span style="flex:1; font-size:0.875rem;">${itemText}</span>
         <button class="bar-btn secondary" data-action="load" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Load</button>
-        <button class="bar-btn primary" data-action="copy" data-idx="${idx}" data-orig-label="Copy" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Copy</button>
+        <button class="bar-btn primary" data-action="link" data-idx="${idx}" data-orig-html="${LINK_ICON_SVG}<span>Link</span>" style="padding:0.25rem 0.5rem; font-size:0.75rem;">${LINK_ICON_SVG}<span>Link</span></button>
       </div>
     `;
   }).join('');
@@ -448,34 +521,19 @@ $('history-list').addEventListener('click', async (e) => {
   const item = arr[idx];
   if (!item) return;
 
-  if (btn.dataset.action === 'copy') {
+  if (btn.dataset.action === 'link') {
     // Copy a permalink URL that recreates this calculation
     const url = buildUrlForHistoryItem(item);
     try {
-      await navigator.clipboard.writeText(url);
-      showToast('Link copied to clipboard');
-      showCopyButtonFeedback(btn);
-    } catch {
-      // fallback: try execCommand and show toast with permalink so user can copy manually
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = url;
-        // keep it off-screen
-        ta.style.position = 'fixed';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.select();
-        const ok = document.execCommand && document.execCommand('copy');
-        ta.remove();
-        if (ok) {
-          showToast('Link copied to clipboard');
-          showCopyButtonFeedback(btn);
-        } else {
-          showToast(url, 6000); // show permalink so user can copy
-        }
-      } catch {
+      const ok = await copyTextToClipboard(url);
+      if (ok) {
+        showToast('Link copied to clipboard');
+        showCopyButtonFeedback(btn);
+      } else {
         showToast(url, 6000);
       }
+    } catch {
+      showToast(url, 6000);
     }
   } else if (btn.dataset.action === 'load') {
     selectTab(item.mode, false);
@@ -585,6 +643,29 @@ Object.keys(panels).forEach(mode => {
       }
     });
   });
+
+  // Add click-to-copy for the large result inline element in this panel
+  const rc = panel.querySelector('.result-container');
+  if (rc) {
+    rc.addEventListener('click', async (ev) => {
+      // If user clicked on the large value area (or inside it), copy the visible numeric text
+      const inline = rc.querySelector('.result-inline');
+      if (!inline) return;
+      const clickedInline = ev.target.closest('.result-inline');
+      if (!clickedInline) return;
+      const valueText = inline.textContent ? inline.textContent.trim() : '';
+      if (!valueText) {
+        showToast('Nothing to copy', 1500);
+        return;
+      }
+      const ok = await copyTextToClipboard(valueText);
+      if (ok) {
+        showToast('Value copied to clipboard');
+      } else {
+        showToast(valueText, 6000);
+      }
+    });
+  }
 });
 
 // Initialize: load stored inputs, then allow URL to override, then render history
