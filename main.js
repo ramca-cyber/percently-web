@@ -146,54 +146,13 @@ function loadAllInputs() {
   }
 }
 
-// Insert toast CSS that uses CSS variables (if it isn't already present)
-function ensureToastStyles() {
-  if (document.getElementById('percently-toast-styles')) return;
-  const css = `
-  :root {
-    --toast-bg: rgba(6,36,58,0.95);
-    --toast-color: #fff;
-    --toast-padding: 8px 14px;
-    --toast-radius: 8px;
-    --toast-shadow: 0 8px 24px rgba(0,0,0,0.25);
-    --toast-z: 99999;
-    --toast-font-size: 13px;
-  }
-  .percently-toast {
-    position: fixed;
-    bottom: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--toast-bg);
-    color: var(--toast-color);
-    padding: var(--toast-padding);
-    border-radius: var(--toast-radius);
-    box-shadow: var(--toast-shadow);
-    z-index: var(--toast-z);
-    opacity: 0;
-    transition: opacity 180ms ease, transform 180ms ease;
-    font-size: var(--toast-font-size);
-    pointer-events: none;
-  }
-  .percently-toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-    pointer-events: auto;
-  }`;
-  const st = document.createElement('style');
-  st.id = 'percently-toast-styles';
-  st.textContent = css;
-  document.head.appendChild(st);
-}
-
-// Small toast helper to show non-blocking feedback (uses CSS variables defined above)
+// showToast: use centralized CSS (style.css) rather than injecting styles
 function showToast(msg, duration = 3000) {
-  ensureToastStyles();
   const t = document.createElement('div');
   t.className = 'percently-toast';
   t.textContent = msg;
   document.body.appendChild(t);
-  // Force reflow then add class to trigger transition
+  // trigger transition
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => {
     t.classList.remove('show');
@@ -312,7 +271,7 @@ function computeNow(mode) {
       try {
         r = calc.whatPercent(a, b);
         htmlNumeric = `<strong>${N(r)}%</strong>`;
-        htmlText = `${N(a)} is <strong>${N(r)}%</strong> of ${N(b)}`;
+        htmlText = `${N(a)} is ${N(r)}% of ${N(b)}`;
         text = `${a} is ${r}% of ${b}`;
       } catch (err) {
         htmlNumeric = `<span style="color:var(--danger);">${err.message}</span>`;
@@ -482,13 +441,11 @@ function renderHistory() {
   }
 
   list.innerHTML = arr.map((item, idx) => {
-    // include data-orig-html so feedback can restore markup (icon + label)
-    const itemText = escapeHtml(item.text);
     return `
       <div style="display:flex; gap:0.5rem; align-items:center; padding:0.5rem; background:var(--bg-secondary, #f5f5f5); border-radius:0.25rem;">
-        <span style="flex:1; font-size:0.875rem;">${itemText}</span>
+        <span style="flex:1; font-size:0.875rem;">${escapeHtml(item.text)}</span>
         <button class="bar-btn secondary" data-action="load" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Load</button>
-        <button class="bar-btn primary" data-action="link" data-idx="${idx}" data-orig-html="${LINK_ICON_SVG}<span>Link</span>" style="padding:0.25rem 0.5rem; font-size:0.75rem;">${LINK_ICON_SVG}<span>Link</span></button>
+        <button class="bar-btn primary" data-action="link" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">${LINK_ICON_SVG}<span>Link</span></button>
       </div>
     `;
   }).join('');
@@ -498,17 +455,6 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
-}
-
-// Build a permalink URL for a history item (mode + params)
-function buildUrlForHistoryItem(item) {
-  const params = new URLSearchParams();
-  params.set('mode', item.mode);
-  const p = item.params || {};
-  Object.keys(p).forEach(k => {
-    if (p[k]) params.set(k, p[k]);
-  });
-  return window.location.origin + window.location.pathname + '?' + params.toString();
 }
 
 // History click handler (event delegation)
