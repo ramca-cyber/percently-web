@@ -300,7 +300,7 @@ function computeNow(mode) {
   return { r, htmlNumeric, htmlText, text };
 }
 
-// Clear result container for a panel
+// Clear result container for a panel (also hide actions area)
 function clearResult(panelEl) {
   const resultContainer = panelEl.querySelector('.result-container');
   if (resultContainer) {
@@ -310,10 +310,12 @@ function clearResult(panelEl) {
     if (resultInline) resultInline.innerHTML = '';
     if (resultMsg) resultMsg.textContent = '';
   }
+  const actions = panelEl.querySelector('.actions-below');
+  if (actions) actions.classList.add('hidden');
 }
 
-// Show result in a panel
-function showResult(panelEl, htmlNumeric, htmlText) {
+// Show result in a panel and optionally reveal the action bar
+function showResult(panelEl, htmlNumeric, htmlText, showActions = true) {
   const rc = panelEl.querySelector('.result-container');
   if (!rc) return;
   const inline = rc.querySelector('.result-inline');
@@ -330,6 +332,13 @@ function showResult(panelEl, htmlNumeric, htmlText) {
   // Put the explanatory text into the smaller message area (tooltip area)
   if (msg) {
     msg.innerHTML = htmlText || '';
+  }
+
+  // Show or hide the action bar (Calculate/Clear)
+  const actions = panelEl.querySelector('.actions-below');
+  if (actions) {
+    if (showActions) actions.classList.remove('hidden');
+    else actions.classList.add('hidden');
   }
 
   // aria-live areas on the DOM will announce as appropriate
@@ -457,6 +466,17 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// Build a permalink URL for a history item (mode + params)
+function buildUrlForHistoryItem(item) {
+  const params = new URLSearchParams();
+  params.set('mode', item.mode);
+  const p = item.params || {};
+  Object.keys(p).forEach(k => {
+    if (p[k]) params.set(k, p[k]);
+  });
+  return window.location.origin + window.location.pathname + '?' + params.toString();
+}
+
 // History click handler (event delegation)
 $('history-list').addEventListener('click', async (e) => {
   const btn = e.target.closest('button');
@@ -539,7 +559,8 @@ Object.keys(panels).forEach(mode => {
     
     if (!isNaN(result.r)) {
       // Show numeric result and explanatory text separately
-      showResult(panel, result.htmlNumeric, result.htmlText);
+      // show actions because this is a successful calculation
+      showResult(panel, result.htmlNumeric, result.htmlText, true);
       
       // Add to history
       const inputs = readInputsFor(mode);
@@ -552,7 +573,8 @@ Object.keys(panels).forEach(mode => {
       addHistoryEntry(entry);
     } else if (result.htmlText) {
       // Show error (use htmlText as message and htmlNumeric for inline if provided)
-      showResult(panel, result.htmlNumeric, result.htmlText);
+      // do not reveal action bar for errors
+      showResult(panel, result.htmlNumeric, result.htmlText, false);
     }
   });
 
