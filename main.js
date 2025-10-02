@@ -64,6 +64,39 @@ function readInputsFor(mode) {
 // Helper to get element by id
 function $(id) { return document.getElementById(id); }
 
+// --- Syncing strategy ---
+// Map by position across panels:
+// firstGroup  = first input in each panel  (of-x, inc-x, dec-x, what-a, diff-old)
+// secondGroup = second input in each panel (of-y, inc-y, dec-y, what-b, diff-new)
+// This implements: "first to first, second to second" (X -> A, Y -> B)
+const firstGroup = ['of-x', 'inc-x', 'dec-x', 'what-a', 'diff-old'];
+const secondGroup = ['of-y', 'inc-y', 'dec-y', 'what-b', 'diff-new'];
+let isSyncing = false; // prevent recursive updates
+
+function isInGroup(id, group) {
+  return group.indexOf(id) !== -1;
+}
+
+function syncInputFrom(changedId, value) {
+  if (isSyncing) return;
+  isSyncing = true;
+  try {
+    if (isInGroup(changedId, firstGroup)) {
+      firstGroup.forEach(id => {
+        const el = $(id);
+        if (el && id !== changedId) el.value = value;
+      });
+    } else if (isInGroup(changedId, secondGroup)) {
+      secondGroup.forEach(id => {
+        const el = $(id);
+        if (el && id !== changedId) el.value = value;
+      });
+    }
+  } finally {
+    isSyncing = false;
+  }
+}
+
 // Persist all panels' inputs to sessionStorage
 function saveAllInputs() {
   try {
@@ -80,7 +113,7 @@ function saveAllInputs() {
   }
 }
 
-// Load inputs from sessionStorage into DOM (does not override URL-loaded values if called after loadFromURL)
+// Load inputs from sessionStorage into DOM (does not override URL-loaded values if called before loadFromURL)
 function loadAllInputs() {
   try {
     const raw = sessionStorage.getItem(INPUTS_KEY);
@@ -111,6 +144,57 @@ function loadAllInputs() {
   } catch (err) {
     // ignore parse errors
   }
+}
+
+// Small toast helper to show non-blocking feedback
+function showToast(msg, duration = 3000) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position: 'fixed',
+    bottom: '16px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: 'rgba(6,36,58,0.95)',
+    color: '#fff',
+    padding: '8px 14px',
+    borderRadius: '8px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+    zIndex: 99999,
+    opacity: '0',
+    transition: 'opacity 180ms ease'
+  });
+  document.body.appendChild(t);
+  // fade in
+  requestAnimationFrame(() => { t.style.opacity = '1'; });
+  // fade out & remove
+  setTimeout(() => {
+    t.style.opacity = '0';
+    t.addEventListener('transitionend', () => t.remove(), { once: true });
+  }, duration);
+}
+
+// Visual feedback on the copy button: temporarily change label, style and disable
+function showCopyButtonFeedback(btn, { label = 'Copied', duration = 2000 } = {}) {
+  if (!btn) return;
+  // store original label and styles if not already stored
+  if (!btn.dataset.origLabel) btn.dataset.origLabel = btn.textContent || 'Copy';
+  if (!btn.dataset.origBg) btn.dataset.origBg = btn.style.background || '';
+  if (!btn.dataset.origColor) btn.dataset.origColor = btn.style.color || '';
+
+  // apply feedback state
+  btn.textContent = label;
+  btn.disabled = true;
+  btn.style.background = '#2E8B57'; // green
+  btn.style.color = '#fff';
+
+  // revert after timeout
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = btn.dataset.origLabel || 'Copy';
+    btn.style.background = btn.dataset.origBg || '';
+    btn.style.color = btn.dataset.origColor || '';
+  }, duration);
 }
 
 // Compute result for current mode
@@ -288,6 +372,12 @@ function loadFromURL() {
 
     // persist the URL-provided values into session storage
     saveAllInputs();
+
+    // ensure groups are synced so switching panels shows same first/second values
+    const f0 = $('of-x') ? $('of-x').value : '';
+    if (f0) syncInputFrom('of-x', f0);
+    const s0 = $('of-y') ? $('of-y').value : '';
+    if (s0) syncInputFrom('of-y', s0);
   }
 }
 
@@ -320,11 +410,12 @@ function renderHistory() {
   }
 
   list.innerHTML = arr.map((item, idx) => {
+    // include data-orig-label so we can revert button text after feedback
     return `
       <div style="display:flex; gap:0.5rem; align-items:center; padding:0.5rem; background:var(--bg-secondary, #f5f5f5); border-radius:0.25rem;">
         <span style="flex:1; font-size:0.875rem;">${escapeHtml(item.text)}</span>
         <button class="bar-btn secondary" data-action="load" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Load</button>
-        <button class="bar-btn primary" data-action="copy" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Copy</button>
+        <button class="bar-btn primary" data-action="copy" data-idx="${idx}" data-orig-label="Copy" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Copy</button>
       </div>
     `;
   }).join('');
@@ -334,6 +425,17 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+// Build a permalink URL for a history item (mode + params)
+function buildUrlForHistoryItem(item) {
+  const params = new URLSearchParams();
+  params.set('mode', item.mode);
+  const p = item.params || {};
+  Object.keys(p).forEach(k => {
+    if (p[k]) params.set(k, p[k]);
+  });
+  return window.location.origin + window.location.pathname + '?' + params.toString();
 }
 
 // History click handler (event delegation)
@@ -347,10 +449,33 @@ $('history-list').addEventListener('click', async (e) => {
   if (!item) return;
 
   if (btn.dataset.action === 'copy') {
+    // Copy a permalink URL that recreates this calculation
+    const url = buildUrlForHistoryItem(item);
     try {
-      await navigator.clipboard.writeText(item.text);
+      await navigator.clipboard.writeText(url);
+      showToast('Link copied to clipboard');
+      showCopyButtonFeedback(btn);
     } catch {
-      alert(item.text);
+      // fallback: try execCommand and show toast with permalink so user can copy manually
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        // keep it off-screen
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand && document.execCommand('copy');
+        ta.remove();
+        if (ok) {
+          showToast('Link copied to clipboard');
+          showCopyButtonFeedback(btn);
+        } else {
+          showToast(url, 6000); // show permalink so user can copy
+        }
+      } catch {
+        showToast(url, 6000);
+      }
     }
   } else if (btn.dataset.action === 'load') {
     selectTab(item.mode, false);
@@ -375,6 +500,12 @@ $('history-list').addEventListener('click', async (e) => {
     
     // persist loaded history values so they are retained when switching panels
     saveAllInputs();
+
+    // Ensure groups sync so first/second propagate across panels where applicable
+    const f = $('of-x') ? $('of-x').value : '';
+    if (f) syncInputFrom('of-x', f);
+    const s = $('of-y') ? $('of-y').value : '';
+    if (s) syncInputFrom('of-y', s);
 
     clearResult(panels[item.mode]);
     focusFirstInput();
@@ -433,13 +564,17 @@ Object.keys(panels).forEach(mode => {
     updateURL();
   });
 
-  // Input change handlers - clear result, update URL and persist all inputs
+  // Input change handlers - clear result, update URL and persist all inputs.
+  // Also sync first/second inputs across panels.
   const inputs = panel.querySelectorAll('input[type="text"]');
   inputs.forEach(inp => {
-    inp.addEventListener('input', () => {
+    inp.addEventListener('input', (ev) => {
       clearResult(panel);
-      updateURL();
+      // Sync semantic groups (by position)
+      syncInputFrom(inp.id, inp.value);
+      // Persist state and update URL
       saveAllInputs();
+      updateURL();
     });
 
     // Enter key submits
