@@ -11,15 +11,12 @@
   --ui-padding: 16px;
   --selected-bg-start: #dff1ff;
   --selected-bg-end: #c9e7ff;
-
   --input-font-size: 34px;
   --input-height: 64px;
   --result-font-size: 56px;
-
   --border-color: rgba(13,30,57,0.06);
 }
 
-/* base */
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
@@ -55,10 +52,10 @@ body{
 .calc-mode-title{ margin:0; font-size:1rem; font-weight:800 }
 .calc-mode-sub{ margin:4px 0 0; color:var(--muted); font-size:0.82rem }
 
-/* === symmetrical split === */
+/* symmetrical split */
 .split-rect{
   display:grid;
-  grid-template-columns: 1fr 1fr; /* equal halves */
+  grid-template-columns: 1fr 1fr;
   gap:0;
   border-radius:12px;
   overflow:hidden;
@@ -86,24 +83,6 @@ body{
   text-align:left;
 }
 
-/* connector */
-.connector{
-  width:100%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  height: calc(var(--input-height) * 0.12);
-  margin:6px 0;
-}
-.mid-label{
-  font-weight:800;
-  color:var(--muted);
-  font-size:0.98rem;
-  line-height:1;
-  padding:4px 8px;
-  text-align:center;
-}
-
 /* big inputs fill left column */
 .big-input{
   position:relative;
@@ -128,18 +107,6 @@ body{
 .big-input-top{ border-bottom:0; }
 .big-input-bottom{ padding-top:6px; }
 
-/* suffix */
-.input-suffix{
-  position:absolute;
-  right:16px;
-  top:50%;
-  transform:translateY(-50%);
-  font-weight:800;
-  color:#234b63;
-  font-size:20px;
-  pointer-events:none;
-}
-
 /* right column centered */
 .right-col{
   display:flex;
@@ -147,14 +114,23 @@ body{
   align-items:center;
   justify-content:center;
   padding:12px 14px;
-  gap:12px;
+  gap:8px;
   background: linear-gradient(180deg,#fbfdff,#f7fbff);
   border-left:1px solid var(--border-color);
   min-height: 1px;
 }
-.eq-row{ display:flex; align-items:center; gap:12px; justify-content:center; }
+.input-caption#label-result-text {
+  margin-bottom: 8px;
+  font-size:0.96rem;
+  color: var(--muted);
+  font-weight:700;
+  text-align:left;
+  width:100%;
+  max-width:320px;
+}
 
 /* equals and result */
+.eq-row{ display:flex; align-items:center; gap:12px; justify-content:center; }
 .equals{ font-weight:900; font-size:36px; color:#213a4a; line-height:1; }
 .result-inline{
   min-width:120px;
@@ -174,7 +150,7 @@ body{
   line-height:1;
 }
 
-/* result message that used to sit below the buttons is now inside the right column */
+/* result message under result */
 .right-col .result-msg {
   margin-top:8px;
   font-size:0.95rem;
@@ -190,7 +166,7 @@ body{
   gap:10px;
   align-items:center;
   margin-top:12px;
-  justify-content:center; /* center the Calculate/Clear buttons */
+  justify-content:center;
 }
 .bar-btn{
   padding:10px 14px;
@@ -215,7 +191,7 @@ body{
   background: linear-gradient(180deg,#fff,#fcfdff);
   overflow:auto;
   align-items:center;
-  justify-content:center; /* center radio cards */
+  justify-content:center;
 }
 
 /* option pills */

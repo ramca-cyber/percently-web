@@ -19,41 +19,32 @@
       <form id="calc-form" class="compact-form" novalidate>
         <!-- Mode title + subtitle -->
         <div id="calc-mode" class="calc-mode" aria-live="polite">
-          <h2 id="calc-mode-title" class="calc-mode-title">X% of Y</h2>
+          <h2 id="calc-mode-title" class="calc-mode-title">X of Y</h2>
           <p id="calc-mode-sub" class="calc-mode-sub">Enter inputs to compute quickly — result shown on the right.</p>
         </div>
 
-        <!-- Split rectangle: left = stacked inputs (with captions + connector), right = "=" + inline result -->
+        <!-- Split rectangle: left = stacked inputs, right = result with title -->
         <div class="split-rect" role="group" aria-label="Inputs and result">
           <div class="left-col" role="region" aria-label="Inputs">
             <div class="input-wrap">
-              <div class="input-caption" id="label-x-text">Percent (X)</div>
+              <div class="input-caption" id="label-x-text">Input X</div>
               <label class="big-input big-input-top">
                 <input id="input-x" name="x" type="text" inputmode="decimal" placeholder="50" aria-label="X">
-                <span class="input-suffix percent-suffix" id="suffix-x">%</span>
               </label>
             </div>
-
-            <div class="connector" aria-hidden="true">
-              <span id="mid-label" class="mid-label">of</span>
-            </div>
-
             <div class="input-wrap">
-              <div class="input-caption" id="label-y-text">Value (Y)</div>
+              <div class="input-caption" id="label-y-text">Input Y</div>
               <label class="big-input big-input-bottom">
                 <input id="input-y" name="y" type="text" inputmode="decimal" placeholder="200" aria-label="Y">
-                <span class="input-suffix eq-suffix" id="suffix-y"></span>
               </label>
             </div>
           </div>
-
           <div class="right-col" role="region" aria-label="Result">
+            <div class="input-caption" id="label-result-text">Result</div>
             <div class="eq-row" aria-hidden="true">
               <div class="equals" id="equals">=</div>
               <div id="result" class="result-inline" aria-live="polite" title=""></div>
             </div>
-
-            <!-- moved result message inside the right column so the explanatory text appears under the inline result -->
             <div id="result-msg" class="result-msg" aria-live="polite"></div>
           </div>
         </div>
@@ -67,21 +58,16 @@
         <!-- Calculation options inside the same card (boxed row) - centered -->
         <fieldset class="options-row boxed" role="radiogroup" aria-label="Select calculation" id="options-row">
           <legend class="sr-only">Calculation type</legend>
-
           <input type="radio" id="opt-percent-of" name="calc" value="percent-of" checked>
-          <label for="opt-percent-of" class="option-card">X% of Y</label>
-
+          <label for="opt-percent-of" class="option-card">X of Y</label>
           <input type="radio" id="opt-increase-by" name="calc" value="increase-by">
-          <label for="opt-increase-by" class="option-card">Increase Y by X%</label>
-
+          <label for="opt-increase-by" class="option-card">Increase Y by X</label>
           <input type="radio" id="opt-decrease-by" name="calc" value="decrease-by">
-          <label for="opt-decrease-by" class="option-card">Decrease Y by X%</label>
-
+          <label for="opt-decrease-by" class="option-card">Decrease Y by X</label>
           <input type="radio" id="opt-percent-diff" name="calc" value="percent-diff">
           <label for="opt-percent-diff" class="option-card">Percent difference</label>
-
           <input type="radio" id="opt-what-percent" name="calc" value="what-percent">
-          <label for="opt-what-percent" class="option-card">What % is X of Y</label>
+          <label for="opt-what-percent" class="option-card">What percent is X of Y</label>
         </fieldset>
       </form>
     </section>
@@ -90,7 +76,6 @@
       <small>Built with ♥ — responsive & accessible</small>
     </footer>
   </main>
-
   <script type="module" src="main.js"></script>
 </body>
 </html>

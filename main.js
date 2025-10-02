@@ -1,4 +1,4 @@
-// main.js — split rectangle with input captions, centered "=" and larger inline result
+// main.js — calculate only on button click, no connector/suffix logic, result message under result
 import { normalizeNumberInput } from './normalize-number.js';
 import * as calc from './calc.js';
 import './a11y-radio-cards.js';
@@ -12,53 +12,40 @@ const clearBtn = document.getElementById('clear');
 const radios = Array.from(document.querySelectorAll('input[name="calc"]'));
 const modeTitleEl = document.getElementById('calc-mode-title');
 const modeSubEl = document.getElementById('calc-mode-sub');
-const suffixX = document.getElementById('suffix-x');
-const suffixY = document.getElementById('suffix-y');
 const labelXText = document.getElementById('label-x-text');
 const labelYText = document.getElementById('label-y-text');
-const midLabel = document.getElementById('mid-label');
 
-// UI configuration per mode including connector text and captions
+// UI configuration per mode including captions
 const MODE_UI = {
   'percent-of': {
-    title: 'X% of Y',
-    sub: 'Enter the percent X and a value Y to compute X% of Y.',
-    captionX: 'Percent (X)',
-    captionY: 'Value (Y)',
-    mid: 'of',
-    showPercentOn: 'x'
+    title: 'X of Y',
+    sub: 'Enter values to compute.',
+    captionX: 'Input X',
+    captionY: 'Input Y'
   },
   'increase-by': {
-    title: 'Increase Y by X%',
-    sub: 'Add X% to Y (result = Y + X% of Y).',
-    captionX: 'Percent (X)',
-    captionY: 'Value (Y)',
-    mid: 'of',
-    showPercentOn: 'x'
+    title: 'Increase Y by X',
+    sub: 'Add X to Y.',
+    captionX: 'Increase (X)',
+    captionY: 'Value (Y)'
   },
   'decrease-by': {
-    title: 'Decrease Y by X%',
-    sub: 'Subtract X% from Y (result = Y − X% of Y).',
-    captionX: 'Percent (X)',
-    captionY: 'Value (Y)',
-    mid: 'of',
-    showPercentOn: 'x'
+    title: 'Decrease Y by X',
+    sub: 'Subtract X from Y.',
+    captionX: 'Decrease (X)',
+    captionY: 'Value (Y)'
   },
   'percent-diff': {
     title: 'Percent difference',
-    sub: 'How far apart are two values (percent difference).',
+    sub: 'Compare two values.',
     captionX: 'Value A',
-    captionY: 'Value B',
-    mid: 'vs',
-    showPercentOn: null
+    captionY: 'Value B'
   },
   'what-percent': {
     title: 'What percent is X of Y',
-    sub: 'Find what percent the value X is of Y.',
+    sub: 'Find what percent X is of Y.',
     captionX: 'Part (X)',
-    captionY: 'Whole (Y)',
-    mid: 'is of',
-    showPercentOn: null
+    captionY: 'Whole (Y)'
   }
 };
 
@@ -89,19 +76,19 @@ function calculate(type, xRaw, yRaw) {
       case 'percent-of': {
         const out = calc.percentOf(x, y);
         const display = formatNumber(out, { maxDecimals: 2 });
-        const msg = `${formatNumber(x)}% of ${formatNumber(y)} is ${display}`;
+        const msg = `${formatNumber(x)} of ${formatNumber(y)} is ${display}`;
         return { ok: true, out, msg, display };
       }
       case 'increase-by': {
         const out = calc.increaseBy(x, y);
         const display = formatNumber(out, { maxDecimals: 2 });
-        const msg = `${formatNumber(y)} increased by ${formatNumber(x)}% is ${display}`;
+        const msg = `${formatNumber(y)} increased by ${formatNumber(x)} is ${display}`;
         return { ok: true, out, msg, display };
       }
       case 'decrease-by': {
         const out = calc.decreaseBy(x, y);
         const display = formatNumber(out, { maxDecimals: 2 });
-        const msg = `${formatNumber(y)} decreased by ${formatNumber(x)}% is ${display}`;
+        const msg = `${formatNumber(y)} decreased by ${formatNumber(x)} is ${display}`;
         return { ok: true, out, msg, display };
       }
       case 'percent-diff': {
@@ -124,7 +111,7 @@ function calculate(type, xRaw, yRaw) {
   }
 }
 
-// UI update for selected mode
+// update UI for selected mode
 function refreshUIForMode() {
   const mode = document.querySelector('input[name="calc"]:checked').value;
   const ui = MODE_UI[mode] || MODE_UI['percent-of'];
@@ -132,29 +119,9 @@ function refreshUIForMode() {
   modeSubEl.textContent = ui.sub;
   labelXText.textContent = ui.captionX;
   labelYText.textContent = ui.captionY;
-  midLabel.textContent = ui.mid;
-
-  if (ui.showPercentOn === 'x') {
-    suffixX.style.display = 'block';
-    suffixY.style.display = 'none';
-    xInput.placeholder = '50';
-    yInput.placeholder = '200';
-  } else if (ui.showPercentOn === 'y') {
-    suffixX.style.display = 'none';
-    suffixY.style.display = 'block';
-    xInput.placeholder = '10';
-    yInput.placeholder = '100';
-  } else {
-    suffixX.style.display = 'none';
-    suffixY.style.display = 'none';
-    xInput.placeholder = '120';
-    yInput.placeholder = '100';
-  }
-
-  xInput.focus();
 }
 
-// show inline result and tooltip + put friendly message under the inline result
+// show result only when called explicitly
 function showInlineResult(res) {
   if (!res) return;
   if (!res.ok) {
@@ -168,35 +135,41 @@ function showInlineResult(res) {
 
   resultInline.textContent = res.display;
   resultInline.style.color = 'var(--accent)';
-
-  // tooltip shows full sentence + exact value
   const exact = (typeof res.out === 'number' && isFinite(res.out)) ? fullPrecisionString(res.out) : '';
   resultInline.title = res.msg + (exact ? ` — Exact: ${exact}` : '');
-
-  // show the same friendly explanation below the inline result in the right column
   resultMsg.textContent = res.msg;
   resultMsg.style.color = 'var(--muted)';
 }
 
-// debounce helper
-function debounce(fn, wait = 300) {
-  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); };
-}
+// Radios update UI only, no auto-calc
+radios.forEach(r => r.addEventListener('change', () => { refreshUIForMode(); }));
 
-const autoCalc = true;
-const debounced = debounce(() => {
+// Prevent Enter from submitting
+[xInput, yInput].forEach(inp => {
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+    }
+  });
+});
+
+// Calculate button: explicit calculation
+calcBtn.addEventListener('click', (e) => {
+  e.preventDefault();
   const type = document.querySelector('input[name="calc"]:checked').value;
   const res = calculate(type, xInput.value.trim(), yInput.value.trim());
   showInlineResult(res);
-}, 350);
+});
 
-// wiring
-radios.forEach(r => r.addEventListener('change', () => { refreshUIForMode(); if (autoCalc) debounced(); }));
-[xInput, yInput].forEach(inp => { inp.addEventListener('input', () => { if (autoCalc) debounced(); }); inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const type = document.querySelector('input[name=\"calc\"]:checked').value; const res = calculate(type, xInput.value.trim(), yInput.value.trim()); showInlineResult(res); } }); });
+// Clear button
+clearBtn.addEventListener('click', () => {
+  xInput.value = '';
+  yInput.value = '';
+  resultInline.textContent = '';
+  resultInline.removeAttribute('title');
+  resultMsg.textContent = '';
+  xInput.focus();
+});
 
-calcBtn.addEventListener('click', (e) => { e.preventDefault(); const type = document.querySelector('input[name=\"calc\"]:checked').value; const res = calculate(type, xInput.value.trim(), yInput.value.trim()); showInlineResult(res); });
-clearBtn.addEventListener('click', () => { xInput.value=''; yInput.value=''; resultInline.textContent=''; resultInline.removeAttribute('title'); resultMsg.textContent=''; xInput.focus(); });
-
-// init
+// initialize UI
 refreshUIForMode();
-debounced();
