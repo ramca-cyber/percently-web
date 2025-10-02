@@ -1,9 +1,12 @@
 // main.js — submit-only calculations with structured history
 import { normalizeNumberInput } from './normalize-number.js';
 import * as calc from './calc.js';
+// Inline small SVG icons (kept minimal to avoid external module dependency)
+const COPY_ICON = `<svg aria-hidden="true" focusable="false" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:middle"><rect x="9" y="9" width="10" height="10" rx="2"></rect><path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"></path></svg>`;
+const LINK_ICON = `<svg aria-hidden="true" focusable="false" width="1em" height="1em" viewBox="0 0 24 24" style="vertical-align:middle; margin-left:6px; fill:none; stroke:currentColor; stroke-width:2"><rect x="9" y="9" width="10" height="10" rx="2"></rect><path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"></path></svg>`;
 
 const HISTORY_KEY = 'percently_history_v3';
-const MAX_HISTORY = 30;
+const MAX_HISTORY = 8;
 const INPUTS_KEY = 'percently_inputs_v1'; // session persistence for inputs across panels
 
 let currentMode = 'of'; // 'of', 'inc', 'dec', 'what', 'diff'
@@ -75,23 +78,9 @@ function isInGroup(id, group) {
 }
 
 function syncInputFrom(changedId, value) {
-  if (isSyncing) return;
-  isSyncing = true;
-  try {
-    if (isInGroup(changedId, firstGroup)) {
-      firstGroup.forEach(id => {
-        const el = $(id);
-        if (el && id !== changedId) el.value = value;
-      });
-    } else if (isInGroup(changedId, secondGroup)) {
-      secondGroup.forEach(id => {
-        const el = $(id);
-        if (el && id !== changedId) el.value = value;
-      });
-    }
-  } finally {
-    isSyncing = false;
-  }
+  // Intentionally disabled: do not copy input values across panels. Carrying values between
+  // panels was confusing for users, so this function is a no-op to keep each panel isolated.
+  return;
 }
 
 // Persist all panels' inputs to sessionStorage
@@ -157,8 +146,14 @@ function showToast(msg, duration = 3000) {
   }, duration);
 }
 
-// Small inline SVG for copy/link icon
-const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-left:6px; fill:none; stroke:currentColor; stroke-width:2"><rect x="9" y="9" width="10" height="10" rx="2"></rect><path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"></path></svg>`;
+// Centralized icon strings (imported)
+
+// Centralized user-visible messages for copy/link actions
+const M = {
+  valueCopied: 'Value copied to clipboard',
+  linkCopied: 'Link copied to clipboard',
+  copyFailed: 'Copy failed'
+};
 
 // Generic copy-to-clipboard with fallback; returns Promise<boolean>
 function copyTextToClipboard(text) {
@@ -247,6 +242,12 @@ async function copyAndFlash(el, text, okMsg = 'Copied', failMsg = 'Copy failed',
     }
     el._copyTimeout = null;
   }, duration);
+
+  // Also show a centralized toast for successful copies so users see the same
+  // feedback as when copying links. Do not block on toast.
+  if (ok) {
+    try { showToast(okMsg, Math.max(1200, duration)); } catch (e) { /* ignore */ }
+  }
 
   return ok;
 }
@@ -347,15 +348,68 @@ function computeNow(mode) {
   return { r, htmlNumeric, htmlText, text };
 }
 
+// Create and wire result controls (idempotent). Ensures `.result-value` and
+// `.result-inline-copy` exist and attaches copy behavior once.
+function createResultControls(panelEl) {
+  if (!panelEl) return;
+  const rc = panelEl.querySelector('.result-container');
+  if (!rc) return;
+  const inline = rc.querySelector('.result-inline');
+
+  // result-value
+  let valueEl = inline ? inline.querySelector('.result-value') : rc.querySelector('.result-value');
+  if (!valueEl) {
+    valueEl = document.createElement('span');
+    valueEl.className = 'result-value';
+    if (inline) inline.insertBefore(valueEl, inline.firstChild); else rc.appendChild(valueEl);
+  }
+
+  // inline copy button
+  let inlineCopy = rc.querySelector('.result-inline-copy');
+  if (!inlineCopy) {
+    inlineCopy = document.createElement('button');
+    inlineCopy.type = 'button';
+    inlineCopy.className = 'result-inline-copy';
+    inlineCopy.title = 'Copy result value';
+    inlineCopy.setAttribute('aria-label', 'Copy result value');
+    inlineCopy.innerHTML = COPY_ICON;
+    if (inline) inline.appendChild(inlineCopy); else rc.appendChild(inlineCopy);
+  }
+
+  // Wire copy behavior once per element
+  if (!inlineCopy.dataset.copyWired) {
+    const panelId = panelEl && panelEl.id ? panelEl.id : '';
+    const inferredMode = panelId && panelId.indexOf('panel-') === 0 ? panelId.slice(6) : null;
+    makeCopyTarget(inlineCopy, () => {
+      if (lastComputedEntry && inferredMode && lastComputedEntry.mode === inferredMode && typeof lastComputedEntry.value !== 'undefined' && !Number.isNaN(lastComputedEntry.value)) {
+        if (inferredMode === 'what') return `${formatNumber(lastComputedEntry.value)}%`;
+        return `${formatNumber(lastComputedEntry.value)}`;
+      }
+      const panelMsg = panelEl.querySelector('.result-msg');
+      if (panelMsg && panelMsg.textContent && panelMsg.textContent.trim()) return panelMsg.textContent.trim();
+      const raw = inline && inline.textContent ? inline.textContent.trim() : '';
+      return raw.replace(/^[=\s]+/, '').trim();
+    }, { okMsg: M.valueCopied, failMsg: M.copyFailed });
+    inlineCopy.dataset.copyWired = '1';
+  }
+}
+
 // Clear result container for a panel (leave action buttons visible)
 function clearResult(panelEl) {
   const resultContainer = panelEl.querySelector('.result-container');
   if (resultContainer) {
     resultContainer.style.display = 'none';
     const resultInline = resultContainer.querySelector('.result-inline');
-    const resultMsg = resultContainer.querySelector('.result-msg');
-    if (resultInline) resultInline.innerHTML = '';
+    // result-msg has been moved outside the result container into the panel
+    const resultMsg = panelEl.querySelector('.result-msg');
+    if (resultInline) {
+      const val = resultInline.querySelector('.result-value');
+      if (val) val.innerHTML = '';
+    }
     if (resultMsg) resultMsg.textContent = '';
+    // hide equals row when empty
+    const eqRow = resultContainer.closest('.eq-row');
+    if (eqRow) eqRow.style.display = 'none';
   }
   // Do NOT hide clear/primary buttons — keep actions visible so user can clear anytime.
   const actions = panelEl.querySelector('.actions-below');
@@ -371,15 +425,63 @@ function showResult(panelEl, htmlNumeric, htmlText, _showSecondary = true) {
   const rc = panelEl.querySelector('.result-container');
   if (!rc) return;
   const inline = rc.querySelector('.result-inline');
-  const msg = rc.querySelector('.result-msg');
+  const msg = panelEl.querySelector('.result-msg');
 
   // Reveal container
   rc.style.display = 'block';
+  // ensure equals row is visible
+  const eqRow = rc.closest('.eq-row');
+  if (eqRow) eqRow.style.display = '';
 
   // Put only the numeric HTML into the large display
   if (inline) {
-    inline.innerHTML = htmlNumeric || '';
+    // ensure we only replace the numeric value so existing inline controls (copy) are preserved
+    let valueEl = inline.querySelector('.result-value');
+    if (!valueEl) {
+      valueEl = document.createElement('span');
+      valueEl.className = 'result-value';
+      // place numeric value before any inline controls
+      inline.insertBefore(valueEl, inline.firstChild);
+    }
+    valueEl.innerHTML = htmlNumeric || '';
+    // Styling is handled by CSS; no inline styles required.
   }
+
+  // Ensure the inline copy button exists and is wired for this panel. Some panels
+  // could miss the initial wiring if DOM timing differs; creating it here guarantees
+  // consistent behavior across all panels.
+  (function ensureInlineCopy() {
+    if (!rc) return;
+    let inlineCopy = rc.querySelector('.result-inline-copy');
+    if (inlineCopy) return; // already present
+    // Create the copy button and insert it into the inline group (or container)
+    inlineCopy = document.createElement('button');
+    inlineCopy.type = 'button';
+    inlineCopy.className = 'result-inline-copy';
+    inlineCopy.title = 'Copy result value';
+    inlineCopy.setAttribute('aria-label', 'Copy result value');
+    // Use em-based SVG sizing so it scales with the button's font-size
+  inlineCopy.innerHTML = COPY_ICON;
+    if (inline) inline.appendChild(inlineCopy); else rc.appendChild(inlineCopy);
+
+    // Styling is handled by CSS; SVG set to em units above so it will scale.
+
+    // Derive mode from panel id (panel-<mode>) so the copy text prefers canonical formatting
+    const panelId = panelEl && panelEl.id ? panelEl.id : '';
+    const inferredMode = panelId && panelId.indexOf('panel-') === 0 ? panelId.slice(6) : null;
+
+    makeCopyTarget(inlineCopy, () => {
+      // Prefer canonical formatted value from lastComputedEntry when available
+      if (lastComputedEntry && inferredMode && lastComputedEntry.mode === inferredMode && typeof lastComputedEntry.value !== 'undefined' && !Number.isNaN(lastComputedEntry.value)) {
+        if (inferredMode === 'what') return `${formatNumber(lastComputedEntry.value)}%`;
+        return `${formatNumber(lastComputedEntry.value)}`;
+      }
+      const panelMsg = panelEl.querySelector('.result-msg');
+      if (panelMsg && panelMsg.textContent && panelMsg.textContent.trim()) return panelMsg.textContent.trim();
+      const raw = inline && inline.textContent ? inline.textContent.trim() : '';
+      return raw.replace(/^[=\s]+/, '').trim();
+  }, { okMsg: M.valueCopied, failMsg: M.copyFailed });
+  })();
 
   // Put the explanatory text into the smaller message area (tooltip area)
   if (msg) {
@@ -527,7 +629,7 @@ function renderHistory() {
         <span class="history-text">${escapeHtml(item.text)}</span>
         <div class="history-actions">
           <button class="bar-btn secondary" data-action="load" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Load</button>
-          <button class="bar-btn primary link-copy" data-action="link" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;"><span>Link</span>${LINK_ICON_SVG}</button>
+          <button class="bar-btn primary link-copy" data-action="link" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;"><span>Link</span>${LINK_ICON}</button>
         </div>
       </div>
     `;
@@ -573,7 +675,7 @@ $('history-list').addEventListener('click', async (e) => {
     try {
       // Use the unified inline feedback helper for consistency
       btn.classList.add('link-copy');
-      await copyAndFlash(btn, url, 'Link copied to clipboard', 'Copy failed');
+  await copyAndFlash(btn, url, M.linkCopied, M.copyFailed);
     } catch {
       // fallback to showing the url in a toast if copy somehow fails
       showToast(url, 6000);
@@ -683,6 +785,8 @@ Object.keys(panels).forEach(mode => {
   const panel = panels[mode];
   if (!panel) return;
   const form = panel.querySelector('form');
+  // Ensure result controls are present and wired for this panel
+  createResultControls(panel);
   
   // Ensure both Calculate and Clear buttons are visible at start
   const actionsInit = panel.querySelector('.actions-below');
@@ -779,72 +883,77 @@ Object.keys(panels).forEach(mode => {
   if (rc) {
     const inline = rc.querySelector('.result-inline');
 
-    // create or reuse a result-actions container (absolute positioned on the right)
-    let rcActions = rc.querySelector('.result-actions');
+    // create or reuse a result-actions container placed below the result area so it doesn't overlap large numbers
+    let rcActions = panel.querySelector('.result-actions-below');
     if (!rcActions) {
       rcActions = document.createElement('div');
-      rcActions.className = 'result-actions';
-      rc.appendChild(rcActions);
+      rcActions.className = 'result-actions-below';
+      // place it after the result container
+      rc.parentNode.insertBefore(rcActions, rc.nextSibling);
     }
 
-    // Copy value button (copies only the numeric value shown in the large display) - placed first
-    let valueBtn = rc.querySelector('.result-value-btn');
-    if (!valueBtn) {
-      valueBtn = document.createElement('button');
-      valueBtn.type = 'button';
-      valueBtn.className = 'bar-btn secondary result-value-btn';
-      valueBtn.style.fontSize = '0.85rem';
-      valueBtn.title = 'Copy result value';
-      valueBtn.setAttribute('aria-label', 'Copy result value');
-      valueBtn.innerHTML = `<span>Copy</span>`;
-      rcActions.appendChild(valueBtn);
+    // Add a small inline copy affordance inside the result container itself so users can click the value
+    // to copy. We'll create a visually subtle button anchored top-right inside rc.
+    let inlineCopy = rc.querySelector('.result-inline-copy');
+    if (!inlineCopy) {
+      inlineCopy = document.createElement('button');
+      inlineCopy.type = 'button';
+      inlineCopy.className = 'result-inline-copy';
+      inlineCopy.title = 'Copy result value';
+      inlineCopy.setAttribute('aria-label', 'Copy result value');
+      // small copy icon (inline SVG)
+  inlineCopy.innerHTML = COPY_ICON;
+  // appearance and positioning are handled by CSS (.result-inline-copy)
+  // place the copy button inside the numeric element so it stays aligned to the value
+  if (inline) inline.appendChild(inlineCopy); else rc.appendChild(inlineCopy);
     }
 
-    makeCopyTarget(valueBtn, () => {
-      // Prefer the canonical formatted value from lastComputedEntry
+    makeCopyTarget(inlineCopy, () => {
+      // Prefer canonical formatted value from lastComputedEntry when available
       if (lastComputedEntry && lastComputedEntry.mode === mode && typeof lastComputedEntry.value !== 'undefined' && !Number.isNaN(lastComputedEntry.value)) {
-        if (mode === 'what') {
-          // what% uses percent formatting in computeNow; append %
-          return `${formatNumber(lastComputedEntry.value)}%`;
-        }
+        if (mode === 'what') return `${formatNumber(lastComputedEntry.value)}%`;
         return `${formatNumber(lastComputedEntry.value)}`;
       }
-
-      // Fallback: sanitize the visible inline content (strip any equals sign or extraneous whitespace)
+      // Fallback to the visible result message (full formatted value was moved to .result-msg)
+      const panelMsg = panel.querySelector('.result-msg');
+      if (panelMsg && panelMsg.textContent && panelMsg.textContent.trim()) return panelMsg.textContent.trim();
       const raw = inline && inline.textContent ? inline.textContent.trim() : '';
-      const sanitized = raw.replace(/^[=\s]+/, '').trim();
-      return sanitized;
-    }, { okMsg: 'Value copied to clipboard', failMsg: 'Copy failed' });
+      return raw.replace(/^[=\s]+/, '').trim();
+  }, { okMsg: M.valueCopied, failMsg: M.copyFailed });
 
-    // Link button (permalink for this result) — visible label + icon to the right
-    let linkBtn = rc.querySelector('.result-link-btn');
-    if (!linkBtn) {
-      linkBtn = document.createElement('button');
-      linkBtn.type = 'button';
-      linkBtn.className = 'bar-btn primary result-link-btn link-copy';
-      linkBtn.style.fontSize = '0.85rem';
-      linkBtn.title = 'Copy link for this calculation';
-      linkBtn.setAttribute('aria-label', 'Copy link for this calculation');
-      linkBtn.innerHTML = `<span>Link</span>${LINK_ICON_SVG}`;
-      rcActions.appendChild(linkBtn);
+    // Move the Link button to the panel's actions-below so it sits alongside Calculate/Clear
+    const actionsBelow = panel.querySelector('.actions-below');
+    if (actionsBelow) {
+      // ensure a link button exists in the actions area (create if missing)
+      let movedLink = actionsBelow.querySelector('.result-link-btn');
+      if (!movedLink) {
+        movedLink = document.createElement('button');
+        movedLink.type = 'button';
+        movedLink.className = 'bar-btn primary result-link-btn link-copy';
+        movedLink.style.fontSize = '0.95rem';
+        movedLink.title = 'Copy link for this calculation';
+        movedLink.setAttribute('aria-label', 'Copy link for this calculation');
+  movedLink.innerHTML = `<span>Link</span>${LINK_ICON}`;
+        actionsBelow.appendChild(movedLink);
+      }
+
+      makeCopyTarget(movedLink, () => {
+        const params = new URLSearchParams();
+        params.set('mode', mode);
+
+        // Prefer the canonical parameters from the lastComputedEntry for this mode
+        const canonicalParams = (lastComputedEntry && lastComputedEntry.mode === mode && lastComputedEntry.params)
+          ? lastComputedEntry.params
+          : readInputsFor(mode);
+
+        Object.keys(canonicalParams || {}).forEach(k => {
+          if (canonicalParams[k]) params.set(k, canonicalParams[k]);
+        });
+
+        params.set('auto', '1');
+        return window.location.origin + window.location.pathname + '?' + params.toString();
+  }, { okMsg: M.linkCopied, failMsg: M.copyFailed });
     }
-
-    makeCopyTarget(linkBtn, () => {
-      const params = new URLSearchParams();
-      params.set('mode', mode);
-
-      // Prefer the canonical parameters from the lastComputedEntry for this mode
-      const canonicalParams = (lastComputedEntry && lastComputedEntry.mode === mode && lastComputedEntry.params)
-        ? lastComputedEntry.params
-        : readInputsFor(mode);
-
-      Object.keys(canonicalParams || {}).forEach(k => {
-        if (canonicalParams[k]) params.set(k, canonicalParams[k]);
-      });
-
-      params.set('auto', '1');
-      return window.location.origin + window.location.pathname + '?' + params.toString();
-    }, { okMsg: 'Link copied to clipboard', failMsg: 'Copy failed' });
   }
 });
 
@@ -852,3 +961,5 @@ Object.keys(panels).forEach(mode => {
 loadAllInputs();
 loadFromURL();
 renderHistory();
+// Ensure every panel has the inline value and copy affordance wired (idempotent).
+// (creation/wiring now handled via createResultControls called during panel init)
