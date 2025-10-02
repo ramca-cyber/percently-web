@@ -228,6 +228,73 @@ function copyTextToClipboard(text) {
   });
 }
 
+// Shared inline copy feedback and helper (used by result value, small copy button, and history link buttons)
+async function copyAndFlash(el, text, okMsg = 'Copied', failMsg = 'Copy failed', duration = 1400) {
+  if (!el || !text) return false;
+  const ok = await copyTextToClipboard(text);
+
+  // Clear any previous timeout
+  if (el._copyTimeout) { clearTimeout(el._copyTimeout); el._copyTimeout = null; }
+  el.classList.remove('copied', 'copy-failed');
+  if (ok) el.classList.add('copied'); else el.classList.add('copy-failed');
+
+  // Announce for assistive tech: prefer result-msg in nearest result-container
+  const container = el.closest('.result-container');
+  if (container) {
+    const msgEl = container.querySelector('.result-msg');
+    if (msgEl) msgEl.textContent = ok ? okMsg : failMsg;
+  } else {
+    // fallback global sr-live
+    let sr = document.getElementById('percently-sr-live');
+    if (!sr) {
+      sr = document.createElement('div');
+      sr.id = 'percently-sr-live';
+      sr.className = 'sr-only';
+      sr.setAttribute('aria-live', 'polite');
+      document.body.appendChild(sr);
+    }
+    sr.textContent = ok ? okMsg : failMsg;
+  }
+
+  el._copyTimeout = setTimeout(() => {
+    el.classList.remove('copied', 'copy-failed');
+    if (container) {
+      const msgEl = container.querySelector('.result-msg');
+      if (msgEl) msgEl.textContent = '';
+    } else {
+      const sr = document.getElementById('percently-sr-live');
+      if (sr) sr.textContent = '';
+    }
+    el._copyTimeout = null;
+  }, duration);
+
+  return ok;
+}
+
+// Make an element a keyboard-accessible copy target that uses copyAndFlash
+function makeCopyTarget(el, getText) {
+  if (!el) return;
+  // If not a native button, make focusable
+  if (el.tagName.toLowerCase() !== 'button' && !el.hasAttribute('tabindex')) {
+    el.setAttribute('tabindex', '0');
+  }
+  if (!el.hasAttribute('role')) el.setAttribute('role', 'button');
+
+  el.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const text = typeof getText === 'function' ? getText() : getText;
+    await copyAndFlash(el, text, 'Value copied to clipboard', 'Copy failed');
+  });
+
+  el.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const text = typeof getText === 'function' ? getText() : getText;
+      await copyAndFlash(el, text, 'Value copied to clipboard', 'Copy failed');
+    }
+  });
+}
+
 // Compute result for current mode
 function computeNow(mode) {
   let r = NaN, htmlNumeric = '', htmlText = '', text = '';
@@ -471,7 +538,7 @@ function renderHistory() {
       <div style="display:flex; gap:0.5rem; align-items:center; padding:0.5rem; background:var(--bg-secondary, #f5f5f5); border-radius:0.25rem;">
         <span style="flex:1; font-size:0.875rem;">${escapeHtml(item.text)}</span>
         <button class="bar-btn secondary" data-action="load" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Load</button>
-        <button class="bar-btn primary" data-action="link" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">${LINK_ICON_SVG}<span>Link</span></button>
+        <button class="bar-btn primary link-copy" data-action="link" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">${LINK_ICON_SVG}<span>Link</span></button>
       </div>
     `;
   }).join('');
@@ -510,14 +577,11 @@ $('history-list').addEventListener('click', async (e) => {
     // Copy a permalink URL that recreates this calculation
     const url = buildUrlForHistoryItem(item);
     try {
-      const ok = await copyTextToClipboard(url);
-      if (ok) {
-        showToast('Link copied to clipboard');
-        showCopyButtonFeedback(btn);
-      } else {
-        showToast(url, 6000);
-      }
+      // Use the unified inline feedback helper for consistency
+      btn.classList.add('link-copy');
+      await copyAndFlash(btn, url, 'Link copied to clipboard', url);
     } catch {
+      // fallback to showing the url in a toast if copy somehow fails
       showToast(url, 6000);
     }
   } else if (btn.dataset.action === 'load') {
@@ -645,27 +709,28 @@ Object.keys(panels).forEach(mode => {
     });
   });
 
-  // Add click-to-copy for the large result inline element in this panel
+  // Wire inline copy targets for the large result area:
   const rc = panel.querySelector('.result-container');
   if (rc) {
-    rc.addEventListener('click', async (ev) => {
-      // If user clicked on the large value area (or inside it), copy the visible numeric text
-      const inline = rc.querySelector('.result-inline');
-      if (!inline) return;
-      const clickedInline = ev.target.closest('.result-inline');
-      if (!clickedInline) return;
-      const valueText = inline.textContent ? inline.textContent.trim() : '';
-      if (!valueText) {
-        showToast('Nothing to copy', 1500);
-        return;
-      }
-      const ok = await copyTextToClipboard(valueText);
-      if (ok) {
-        showToast('Value copied to clipboard');
-      } else {
-        showToast(valueText, 6000);
-      }
-    });
+    const inline = rc.querySelector('.result-inline');
+    const copyBtn = rc.querySelector('.result-copy-btn');
+
+    // Make the numeric value itself a copy target
+    if (inline) {
+      makeCopyTarget(inline, () => inline.textContent ? inline.textContent.trim() : '');
+    }
+
+    // Make the small copy-link button produce a permalink for this panel (auto=1)
+    if (copyBtn) {
+      makeCopyTarget(copyBtn, () => {
+        const params = new URLSearchParams();
+        params.set('mode', mode);
+        const inputsNow = readInputsFor(mode);
+        Object.keys(inputsNow).forEach(k => { if (inputsNow[k]) params.set(k, inputsNow[k]); });
+        params.set('auto', '1');
+        return window.location.origin + window.location.pathname + '?' + params.toString();
+      });
+    }
   }
 });
 
