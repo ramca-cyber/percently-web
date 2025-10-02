@@ -72,8 +72,8 @@ body{
 /* Split rectangle: left inputs / right result */
 .split-rect{
   display:grid;
-  /* allow the right column to shrink but keep a usable minimum */
-  grid-template-columns: 1fr minmax(180px, 320px);
+  /* Make left (inputs) and right (result) share space evenly while keeping a sensible minimum width */
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
   gap:10px;
   margin-top:10px;
   align-items:stretch;
@@ -187,8 +187,13 @@ body{
 .result-inline.copied,
 .result-copy-btn.copied,
 .bar-btn.link-copy.copied { background: rgba(46,139,87,0.08); box-shadow: 0 8px 16px rgba(46,139,87,0.06); }
+
+/* Ensure copy triggers contain the absolute-positioned badge */
+.result-copy-btn,
+.bar-btn.link-copy { position: relative; }
+
 .result-inline.copied::after,
-.result-copy-btn.copied,
+.result-copy-btn.copied::after,
 .bar-btn.link-copy.copied::after {
   content: "Copied";
   position: absolute;
@@ -251,7 +256,8 @@ body{
 /* Responsive */
 @media (max-width:920px) {
   :root { --result-font-size: 48px; }
-  .split-rect{ grid-template-columns: 1fr 220px; }
+  /* Keep columns even on medium screens but allow the layout to breathe */
+  .split-rect{ grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr); }
 }
 @media (max-width:720px) {
   .split-rect{ grid-template-columns: 1fr; }
