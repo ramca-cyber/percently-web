@@ -1,4 +1,196 @@
-/* ---------- Percently: centralized toast styles (append this block to style.css) ---------- */
+:root{
+  --bg: #ffffff;
+  --bg-secondary: #f7f9fb;
+  --muted: #6b7a86;
+  --fg: #06243a;
+  --accent: #0b74ff;
+  --danger: #e03e3e;
+  --card-radius: 12px;
+  --card-padding: 18px;
+  --result-font-size: 72px;
+  --result-color: #0b62d6;
+  --shadow-elev: 0 10px 30px rgba(10,30,60,0.06);
+  --border: 1px solid rgba(13,30,57,0.06);
+  --selected-bg-start: #eaf4ff;
+  --selected-bg-end: #dbefff;
+}
+
+/* Reset / base */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color:var(--fg);
+  background:linear-gradient(180deg,#fbfdff,#f7fbff);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  line-height:1.35;
+  padding:24px;
+}
+
+/* Layout helpers */
+.wrap{max-width:1150px;margin:0 auto}
+.compact{padding:8px}
+.compact-card{
+  background:var(--bg);
+  border-radius:var(--card-radius);
+  box-shadow:var(--shadow-elev);
+  padding:var(--card-padding);
+  border:var(--border);
+}
+
+/* Header */
+.site-header{margin-bottom:12px}
+.title{margin:0;font-size:20px;font-weight:600}
+.subtitle{margin:4px 0 0;color:var(--muted);font-size:13px}
+
+/* Options row (tabs / radio-like cards) */
+.options-row{display:flex;gap:8px;flex-wrap:wrap}
+.options-row.boxed{padding:8px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbfdff); border:var(--border)}
+.option-card{
+  background:transparent;
+  border-radius:10px;
+  padding:10px 14px;
+  border:1px solid rgba(13,30,57,0.06);
+  cursor:pointer;
+  color:var(--muted);
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+.option-card[role="tab"][aria-selected="true"]{
+  background: linear-gradient(180deg,var(--selected-bg-start), var(--selected-bg-end));
+  color: #06243a;
+  box-shadow: 0 8px 18px rgba(11,116,255,0.08);
+  transform: translateY(-2px);
+  border: 1px solid rgba(11,116,255,0.12);
+  z-index: 2;
+}
+
+/* Split rectangle: left inputs / right result */
+.split-rect{
+  display:grid;
+  grid-template-columns: 1fr 360px;
+  gap:0;
+  margin-top:12px;
+  align-items:stretch;
+}
+
+/* Left column inputs */
+.left-col{padding:18px}
+.input-wrap{margin-bottom:18px}
+.input-caption{display:block;color:var(--muted);margin-bottom:8px;font-size:13px}
+.big-input{
+  width:100%;
+  border-radius:10px;
+  padding:18px;
+  font-size:40px;
+  font-weight:700;
+  border:1px solid rgba(13,30,57,0.06);
+  background:linear-gradient(180deg,#fff,#fbfdff);
+  color:var(--fg);
+  text-align:center;
+}
+
+/* Right column (result) */
+.right-col{padding:18px;border-left:1px solid rgba(13,30,57,0.04);display:flex;flex-direction:column;align-items:stretch;justify-content:center}
+.input-caption{font-weight:600}
+.result-container{
+  background: linear-gradient(180deg,#f6fbff,#eef7ff);
+  border-radius:12px;
+  padding:18px;
+  min-height:180px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  position:relative;
+  box-shadow: 0 6px 18px rgba(11,116,255,0.04) inset;
+  width:100%;
+}
+.eq-row{display:flex;align-items:center;gap:8px}
+.equals{font-size:20px;color:#0b2f48;font-weight:700}
+.result-inline{
+  font-size:var(--result-font-size);
+  line-height:0.9;
+  font-weight:800;
+  color:var(--result-color);
+  text-align:center;
+  padding:6px 8px;
+  display:inline-block;
+  min-width:120px;
+}
+.result-msg{margin-top:10px;color:var(--muted);font-size:13px;text-align:center}
+
+/* Actions below (Calculate / Clear) - reserve area to avoid layout shift */
+.actions-below{
+  margin-top:14px;
+  display:flex;
+  gap:0.75rem;
+  justify-content:center;
+  align-items:center;
+  min-height:44px;
+}
+.actions-below.hidden > * { display:none; }
+
+/* Buttons */
+.bar-btn{
+  border-radius:999px;
+  padding:10px 18px;
+  border:0;
+  cursor:pointer;
+  font-weight:700;
+  box-shadow:none;
+}
+.bar-btn.primary{
+  background:var(--accent);
+  color:white;
+  box-shadow: 0 10px 20px rgba(11,116,255,0.08);
+}
+.bar-btn.secondary{
+  background:transparent;
+  border:1px solid rgba(13,30,57,0.08);
+  color:var(--fg);
+}
+
+/* History */
+.history{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+.history .bar-btn{font-size:0.75rem;padding:6px 8px}
+.history span{font-size:0.9rem;color:var(--muted)}
+
+/* Accessible helper */
+.sr-only{ position:absolute !important; height:1px; width:1px; overflow:hidden; clip:rect(1px,1px,1px,1px); white-space:nowrap; }
+
+/* Responsive */
+@media (max-width:920px) {
+  :root { --result-font-size: 50px; }
+  .split-rect{ grid-template-columns: 1fr 220px; }
+}
+@media (max-width:720px) {
+  .split-rect{ grid-template-columns: 1fr; }
+  .right-col{ order:2; border-left:0; border-top:1px solid rgba(13,30,57,0.04); }
+  .left-col{ order:1 }
+  .result-container{ min-height:140px }
+}
+
+/* Result-inline click target styling & copy link button */
+.result-copy-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  cursor:pointer;
+  padding:6px;
+  border-radius:6px;
+}
+.result-copy-btn:focus{outline:2px solid rgba(11,116,255,0.18);outline-offset:2px}
+
+/* Small utility */
+.center{text-align:center}
+
+/* ---------- Percently: centralized toast styles (appended) ---------- */
 /* CSS variables let the app theme the toast centrally. Adjust these in your main stylesheet. */
 :root {
   --percently-toast-bg: rgba(6,36,58,0.95);
@@ -35,7 +227,6 @@
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
 }
-/* optional small responsive tweak */
 @media (max-width: 420px) {
   .percently-toast { left: 50%; transform: translateX(-50%) translateY(8px); max-width: calc(100% - 32px); white-space: normal; text-align:center; }
 }
