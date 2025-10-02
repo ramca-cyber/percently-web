@@ -4,23 +4,69 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Percently — Quick percentage calculator</title>
-  <meta name="description" content="Percently: quick, accurate percentage calculations — X% of Y, increase/decrease, percent difference, and more." />
+  <meta name="description" content="Percently: quick, accurate percentage calculations — large, readable inputs and clear labels." />
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="favicon.ico">
 </head>
 <body>
-  <main class="wrap">
-    <header class="site-header">
+  <main class="wrap compact">
+    <header class="site-header compact-header">
       <h1 class="title">Percently</h1>
-      <p class="subtitle">Quick, accurate percentage calculations — X% of Y, increase/decrease, percent difference, and more.</p>
+      <p class="subtitle">Readable inputs and clear inline results — large inputs with immediate inline answer.</p>
     </header>
 
-    <section class="card">
-      <form class="calc-area" id="calc-form" novalidate>
-        <legend class="visually-hidden">Percentage calculator</legend>
+    <section class="compact-card" aria-label="Calculator">
+      <form id="calc-form" class="compact-form" novalidate>
+        <!-- Mode title + subtitle -->
+        <div id="calc-mode" class="calc-mode" aria-live="polite">
+          <h2 id="calc-mode-title" class="calc-mode-title">X% of Y</h2>
+          <p id="calc-mode-sub" class="calc-mode-sub">Enter inputs to compute quickly — result shown on the right.</p>
+        </div>
 
-        <!-- Calculation option cards (top) -->
-        <fieldset class="options" role="radiogroup" aria-label="Select calculation">
+        <!-- Split rectangle: left = stacked inputs (with captions + connector), right = "=" + inline result -->
+        <div class="split-rect" role="group" aria-label="Inputs and result">
+          <div class="left-col" role="region" aria-label="Inputs">
+            <div class="input-wrap">
+              <div class="input-caption" id="label-x-text">Percent (X)</div>
+              <label class="big-input big-input-top">
+                <input id="input-x" name="x" type="text" inputmode="decimal" placeholder="50" aria-label="X">
+                <span class="input-suffix percent-suffix" id="suffix-x">%</span>
+              </label>
+            </div>
+
+            <div class="connector" aria-hidden="true">
+              <span id="mid-label" class="mid-label">of</span>
+            </div>
+
+            <div class="input-wrap">
+              <div class="input-caption" id="label-y-text">Value (Y)</div>
+              <label class="big-input big-input-bottom">
+                <input id="input-y" name="y" type="text" inputmode="decimal" placeholder="200" aria-label="Y">
+                <span class="input-suffix eq-suffix" id="suffix-y"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="right-col" role="region" aria-label="Result">
+            <div class="eq-row" aria-hidden="true">
+              <div class="equals" id="equals">=</div>
+              <div id="result" class="result-inline" aria-live="polite" title=""></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions (below the main rectangle) -->
+        <div class="actions-below">
+          <button type="submit" id="calculate" class="bar-btn primary" aria-label="Calculate">Calculate</button>
+          <button type="button" id="clear" class="bar-btn secondary" aria-label="Clear">Clear</button>
+        </div>
+
+        <div id="result-msg" class="result-msg" aria-hidden="true"></div>
+
+        <!-- Calculation options inside the same card (boxed row) -->
+        <fieldset class="options-row boxed" role="radiogroup" aria-label="Select calculation" id="options-row">
+          <legend class="sr-only">Calculation type</legend>
+
           <input type="radio" id="opt-percent-of" name="calc" value="percent-of" checked>
           <label for="opt-percent-of" class="option-card">X% of Y</label>
 
@@ -34,37 +80,12 @@
           <label for="opt-percent-diff" class="option-card">Percent difference</label>
 
           <input type="radio" id="opt-what-percent" name="calc" value="what-percent">
-          <label for="opt-what-percent" class="option-card">X as % of Y</label>
+          <label for="opt-what-percent" class="option-card">What % is X of Y</label>
         </fieldset>
-
-        <!-- Inputs and actions (under the cards) -->
-        <div class="form-body">
-          <div class="inputs">
-            <div class="field">
-              <label for="input-x" id="label-x">X</label>
-              <input id="input-x" type="text" inputmode="decimal" placeholder="Enter X" required>
-              <div class="helper" id="help-x" aria-hidden="true"></div>
-            </div>
-            <div class="field">
-              <label for="input-y" id="label-y">Y</label>
-              <input id="input-y" type="text" inputmode="decimal" placeholder="Enter Y" required>
-              <div class="helper" id="help-y" aria-hidden="true"></div>
-            </div>
-          </div>
-
-          <div class="actions">
-            <button type="submit" id="calculate" class="btn primary">Calculate</button>
-            <button type="button" id="clear" class="btn">Clear</button>
-          </div>
-
-          <div id="result" class="result" aria-live="polite"></div>
-
-          <p class="hint">Tip: press Enter to calculate. You can type numbers with comma or dot decimals.</p>
-        </div>
       </form>
     </section>
 
-    <footer class="site-footer">
+    <footer class="site-footer compact-footer">
       <small>Built with ♥ — responsive & accessible</small>
     </footer>
   </main>

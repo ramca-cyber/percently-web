@@ -1,67 +1,86 @@
-// main.js — wires UI, imports normalization + calc functions, updates UI (display formatting improved)
+// main.js — split rectangle with input captions, centered "=" and larger inline result
 import { normalizeNumberInput } from './normalize-number.js';
 import * as calc from './calc.js';
 import './a11y-radio-cards.js';
 
-const form = document.getElementById('calc-form');
 const xInput = document.getElementById('input-x');
 const yInput = document.getElementById('input-y');
-const resultEl = document.getElementById('result');
+const resultInline = document.getElementById('result');
+const resultMsg = document.getElementById('result-msg');
+const calcBtn = document.getElementById('calculate');
 const clearBtn = document.getElementById('clear');
 const radios = Array.from(document.querySelectorAll('input[name="calc"]'));
-const helpX = document.getElementById('help-x');
-const helpY = document.getElementById('help-y');
+const modeTitleEl = document.getElementById('calc-mode-title');
+const modeSubEl = document.getElementById('calc-mode-sub');
+const suffixX = document.getElementById('suffix-x');
+const suffixY = document.getElementById('suffix-y');
+const labelXText = document.getElementById('label-x-text');
+const labelYText = document.getElementById('label-y-text');
+const midLabel = document.getElementById('mid-label');
 
-function getSelected() {
-  return document.querySelector('input[name="calc"]:checked').value;
-}
-
-function isIntegerish(v) {
-  return Math.abs(Math.round(v) - v) < 1e-12;
-}
-
-function formatNumber(value, { maxDecimals = 2, minDecimals = 0, percentage = false } = {}) {
-  if (!isFinite(value)) return String(value);
-  // show integers without decimals
-  if (isIntegerish(value)) {
-    const integer = Math.round(value);
-    const nf = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
-    return percentage ? `${nf.format(integer)}%` : nf.format(integer);
+// UI configuration per mode including connector text and captions
+const MODE_UI = {
+  'percent-of': {
+    title: 'X% of Y',
+    sub: 'Enter the percent X and a value Y to compute X% of Y.',
+    captionX: 'Percent (X)',
+    captionY: 'Value (Y)',
+    mid: 'of',
+    showPercentOn: 'x'
+  },
+  'increase-by': {
+    title: 'Increase Y by X%',
+    sub: 'Add X% to Y (result = Y + X% of Y).',
+    captionX: 'Percent (X)',
+    captionY: 'Value (Y)',
+    mid: 'of',
+    showPercentOn: 'x'
+  },
+  'decrease-by': {
+    title: 'Decrease Y by X%',
+    sub: 'Subtract X% from Y (result = Y − X% of Y).',
+    captionX: 'Percent (X)',
+    captionY: 'Value (Y)',
+    mid: 'of',
+    showPercentOn: 'x'
+  },
+  'percent-diff': {
+    title: 'Percent difference',
+    sub: 'How far apart are two values (percent difference).',
+    captionX: 'Value A',
+    captionY: 'Value B',
+    mid: 'vs',
+    showPercentOn: null
+  },
+  'what-percent': {
+    title: 'What percent is X of Y',
+    sub: 'Find what percent the value X is of Y.',
+    captionX: 'Part (X)',
+    captionY: 'Whole (Y)',
+    mid: 'is of',
+    showPercentOn: null
   }
+};
 
-  const nf = new Intl.NumberFormat(undefined, {
-    minimumFractionDigits: minDecimals,
-    maximumFractionDigits: maxDecimals,
-  });
-  const s = nf.format(value);
-  return percentage ? `${s}%` : s;
+// formatting helpers
+function isIntegerish(v) { return Math.abs(Math.round(v) - v) < 1e-12; }
+function formatNumber(value, { maxDecimals = 2, minDecimals = 0 } = {}) {
+  if (!isFinite(value)) return String(value);
+  if (isIntegerish(value)) {
+    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(Math.round(value));
+  }
+  return new Intl.NumberFormat(undefined, { minimumFractionDigits: minDecimals, maximumFractionDigits: maxDecimals }).format(value);
 }
-
 function fullPrecisionString(v) {
   if (!isFinite(v)) return String(v);
-  // Use up to 12 significant digits to avoid excessive noise
   return Number(v).toPrecision(12).replace(/(?:\.0+|(?<=\.[0-9]*[1-9])0+)$/, '');
 }
 
-function showResult(text, isError = false, outValue) {
-  resultEl.textContent = text;
-  resultEl.style.color = isError ? 'var(--danger)' : 'var(--accent)';
-  if (typeof outValue === 'number' && isFinite(outValue)) {
-    resultEl.title = `Exact: ${fullPrecisionString(outValue)}`;
-  } else {
-    resultEl.removeAttribute('title');
-  }
-}
-
-function validateVal(n) {
-  return typeof n === 'number' && !Number.isNaN(n) && Number.isFinite(n);
-}
-
+// calculate and return {ok,msg,out,display}
 function calculate(type, xRaw, yRaw) {
   const x = normalizeNumberInput(xRaw);
   const y = normalizeNumberInput(yRaw);
-
-  if (!validateVal(x) || !validateVal(y)) {
+  if (!(typeof x === 'number' && isFinite(x)) || !(typeof y === 'number' && isFinite(y))) {
     return { ok: false, msg: 'Please enter numeric values for both X and Y.' };
   }
 
@@ -69,29 +88,33 @@ function calculate(type, xRaw, yRaw) {
     switch (type) {
       case 'percent-of': {
         const out = calc.percentOf(x, y);
-        const msg = `${formatNumber(x)}% of ${formatNumber(y)} is ${formatNumber(out, { maxDecimals: 2 })}`;
-        return { ok: true, msg, out };
+        const display = formatNumber(out, { maxDecimals: 2 });
+        const msg = `${formatNumber(x)}% of ${formatNumber(y)} is ${display}`;
+        return { ok: true, out, msg, display };
       }
       case 'increase-by': {
         const out = calc.increaseBy(x, y);
-        const msg = `${formatNumber(y)} increased by ${formatNumber(x)}% is ${formatNumber(out, { maxDecimals: 2 })}`;
-        return { ok: true, msg, out };
+        const display = formatNumber(out, { maxDecimals: 2 });
+        const msg = `${formatNumber(y)} increased by ${formatNumber(x)}% is ${display}`;
+        return { ok: true, out, msg, display };
       }
       case 'decrease-by': {
         const out = calc.decreaseBy(x, y);
-        const msg = `${formatNumber(y)} decreased by ${formatNumber(x)}% is ${formatNumber(out, { maxDecimals: 2 })}`;
-        return { ok: true, msg, out };
+        const display = formatNumber(out, { maxDecimals: 2 });
+        const msg = `${formatNumber(y)} decreased by ${formatNumber(x)}% is ${display}`;
+        return { ok: true, out, msg, display };
       }
       case 'percent-diff': {
         const out = calc.percentDifference(x, y);
-        // percent-diff is a percentage value (e.g. 12.5). format with 4 decimals for clarity.
-        const msg = `Percent difference between ${formatNumber(x)} and ${formatNumber(y)} is ${formatNumber(out, { maxDecimals: 4 })}%`;
-        return { ok: true, msg, out };
+        const display = formatNumber(out, { maxDecimals: 4 });
+        const msg = `Percent difference between ${formatNumber(x)} and ${formatNumber(y)} is ${display}%`;
+        return { ok: true, out, msg, display: display + '%' };
       }
       case 'what-percent': {
         const out = calc.whatPercent(x, y);
-        const msg = `${formatNumber(x)} is ${formatNumber(out, { maxDecimals: 2 })}% of ${formatNumber(y)}`;
-        return { ok: true, msg, out };
+        const display = formatNumber(out, { maxDecimals: 2 });
+        const msg = `${formatNumber(x)} is ${display}% of ${formatNumber(y)}`;
+        return { ok: true, out, msg, display: display + '%' };
       }
       default:
         return { ok: false, msg: 'Unknown calculation selected.' };
@@ -101,91 +124,75 @@ function calculate(type, xRaw, yRaw) {
   }
 }
 
-function refreshLabels() {
-  const type = getSelected();
-  const labelX = document.getElementById('label-x');
-  const labelY = document.getElementById('label-y');
+// UI update for selected mode
+function refreshUIForMode() {
+  const mode = document.querySelector('input[name="calc"]:checked').value;
+  const ui = MODE_UI[mode] || MODE_UI['percent-of'];
+  modeTitleEl.textContent = ui.title;
+  modeSubEl.textContent = ui.sub;
+  labelXText.textContent = ui.captionX;
+  labelYText.textContent = ui.captionY;
+  midLabel.textContent = ui.mid;
 
-  helpX.textContent = '';
-  helpY.textContent = '';
-
-  switch (type) {
-    case 'percent-of':
-      labelX.textContent = 'X (percent)';
-      labelY.textContent = 'Y (value)';
-      xInput.placeholder = 'e.g. 15';
-      yInput.placeholder = 'e.g. 200';
-      helpX.textContent = 'Enter percent (e.g. 15)';
-      helpY.textContent = 'Enter value to apply percent to';
-      break;
-    case 'increase-by':
-      labelX.textContent = 'X (percent)';
-      labelY.textContent = 'Y (original value)';
-      xInput.placeholder = 'e.g. 10';
-      yInput.placeholder = 'e.g. 250';
-      helpX.textContent = 'Enter percent to increase by';
-      helpY.textContent = 'Original value';
-      break;
-    case 'decrease-by':
-      labelX.textContent = 'X (percent)';
-      labelY.textContent = 'Y (original value)';
-      xInput.placeholder = 'e.g. 10';
-      yInput.placeholder = 'e.g. 250';
-      helpX.textContent = 'Enter percent to decrease by';
-      helpY.textContent = 'Original value';
-      break;
-    case 'percent-diff':
-      labelX.textContent = 'X (value)';
-      labelY.textContent = 'Y (value)';
-      xInput.placeholder = 'e.g. 120';
-      yInput.placeholder = 'e.g. 100';
-      helpX.textContent = 'First value';
-      helpY.textContent = 'Second value';
-      break;
-    case 'what-percent':
-      labelX.textContent = 'X (part)';
-      labelY.textContent = 'Y (whole)';
-      xInput.placeholder = 'e.g. 25';
-      yInput.placeholder = 'e.g. 200';
-      helpX.textContent = 'Part value';
-      helpY.textContent = 'Whole value';
-      break;
-    default:
-      labelX.textContent = 'X';
-      labelY.textContent = 'Y';
+  if (ui.showPercentOn === 'x') {
+    suffixX.style.display = 'block';
+    suffixY.style.display = 'none';
+    xInput.placeholder = '50';
+    yInput.placeholder = '200';
+  } else if (ui.showPercentOn === 'y') {
+    suffixX.style.display = 'none';
+    suffixY.style.display = 'block';
+    xInput.placeholder = '10';
+    yInput.placeholder = '100';
+  } else {
+    suffixX.style.display = 'none';
+    suffixY.style.display = 'none';
+    xInput.placeholder = '120';
+    yInput.placeholder = '100';
   }
+
+  xInput.focus();
 }
 
-radios.forEach(r => r.addEventListener('change', () => {
-  refreshLabels();
-  xInput.focus();
-}));
+// show inline result and tooltip
+function showInlineResult(res) {
+  if (!res) return;
+  if (!res.ok) {
+    resultInline.textContent = '—';
+    resultInline.title = '';
+    resultMsg.textContent = res.msg;
+    resultMsg.style.color = 'var(--danger)';
+    resultInline.style.color = 'var(--danger)';
+    return;
+  }
 
-form.addEventListener('submit', (ev) => {
-  ev.preventDefault();
-  const type = getSelected();
-  const xVal = xInput.value.trim();
-  const yVal = yInput.value.trim();
-  const res = calculate(type, xVal, yVal);
-  showResult(res.msg, !res.ok, res.out);
-});
+  resultInline.textContent = res.display;
+  resultInline.style.color = 'var(--accent)';
+  const exact = (typeof res.out === 'number' && isFinite(res.out)) ? fullPrecisionString(res.out) : '';
+  resultInline.title = res.msg + (exact ? ` — Exact: ${exact}` : '');
+  resultMsg.textContent = res.msg;
+  resultMsg.style.color = 'var(--muted)';
+}
 
-clearBtn.addEventListener('click', () => {
-  xInput.value = '';
-  yInput.value = '';
-  resultEl.textContent = '';
-  resultEl.removeAttribute('title');
-  xInput.focus();
-});
+// debounce helper
+function debounce(fn, wait = 300) {
+  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); };
+}
 
-[xInput, yInput].forEach(inp => {
-  inp.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      form.requestSubmit();
-    }
-  });
-});
+const autoCalc = true;
+const debounced = debounce(() => {
+  const type = document.querySelector('input[name="calc"]:checked').value;
+  const res = calculate(type, xInput.value.trim(), yInput.value.trim());
+  showInlineResult(res);
+}, 350);
 
-// initialize
-refreshLabels();
+// wiring
+radios.forEach(r => r.addEventListener('change', () => { refreshUIForMode(); if (autoCalc) debounced(); }));
+[xInput, yInput].forEach(inp => { inp.addEventListener('input', () => { if (autoCalc) debounced(); }); inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const type = document.querySelector('input[name=\"calc\"]:checked').value; const res = calculate(type, xInput.value.trim(), yInput.value.trim()); showInlineResult(res); } }); });
+
+document.getElementById('calculate').addEventListener('click', (e) => { e.preventDefault(); const type = document.querySelector('input[name=\"calc\"]:checked').value; const res = calculate(type, xInput.value.trim(), yInput.value.trim()); showInlineResult(res); });
+document.getElementById('clear').addEventListener('click', () => { xInput.value=''; yInput.value=''; resultInline.textContent=''; resultInline.removeAttribute('title'); resultMsg.textContent=''; xInput.focus(); });
+
+// init
+refreshUIForMode();
+debounced();
