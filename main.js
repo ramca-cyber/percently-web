@@ -76,19 +76,19 @@ function calculate(type, xRaw, yRaw) {
       case 'percent-of': {
         const out = calc.percentOf(x, y);
         const display = formatNumber(out, { maxDecimals: 2 });
-        const msg = `${formatNumber(x)} of ${formatNumber(y)} is ${display}`;
+        const msg = `${formatNumber(x)}% of ${formatNumber(y)} is ${display}`;
         return { ok: true, out, msg, display };
       }
       case 'increase-by': {
         const out = calc.increaseBy(x, y);
         const display = formatNumber(out, { maxDecimals: 2 });
-        const msg = `${formatNumber(y)} increased by ${formatNumber(x)} is ${display}`;
+        const msg = `${formatNumber(y)} increased by ${formatNumber(x)}% is ${display}`;
         return { ok: true, out, msg, display };
       }
       case 'decrease-by': {
         const out = calc.decreaseBy(x, y);
         const display = formatNumber(out, { maxDecimals: 2 });
-        const msg = `${formatNumber(y)} decreased by ${formatNumber(x)} is ${display}`;
+        const msg = `${formatNumber(y)} decreased by ${formatNumber(x)}% is ${display}`;
         return { ok: true, out, msg, display };
       }
       case 'percent-diff': {
