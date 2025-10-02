@@ -65,7 +65,7 @@ function $(id) { return document.getElementById(id); }
 
 // Compute result for current mode
 function computeNow(mode) {
-  let r = NaN, html = '', text = '';
+  let r = NaN, htmlNumeric = '', htmlText = '', text = '';
   const N = (n) => formatNumber(n, { maxDecimals: 2 });
   const N4 = (n) => formatNumber(n, { maxDecimals: 4 });
   const num = (s) => normalizeNumberInput(s);
@@ -75,7 +75,10 @@ function computeNow(mode) {
     const y = num($('of-y').value);
     if (!isNaN(x) && !isNaN(y)) {
       r = calc.percentOf(x, y);
-      html = `${N(x)}% of ${N(y)} = <strong>${N(r)}</strong>`;
+      // Numeric value (big display)
+      htmlNumeric = `<strong>${N(r)}</strong>`;
+      // Explanatory text for tooltip / result-msg
+      htmlText = `${N(x)}% of ${N(y)} = ${N(r)}`;
       text = `${x}% of ${y} = ${r}`;
     }
   } else if (mode === 'inc') {
@@ -83,7 +86,8 @@ function computeNow(mode) {
     const y = num($('inc-y').value);
     if (!isNaN(x) && !isNaN(y)) {
       r = calc.increaseBy(x, y);
-      html = `${N(y)} increased by ${N(x)}% = <strong>${N(r)}</strong>`;
+      htmlNumeric = `<strong>${N(r)}</strong>`;
+      htmlText = `${N(y)} increased by ${N(x)}% = ${N(r)}`;
       text = `${y} increased by ${x}% = ${r}`;
     }
   } else if (mode === 'dec') {
@@ -91,7 +95,8 @@ function computeNow(mode) {
     const y = num($('dec-y').value);
     if (!isNaN(x) && !isNaN(y)) {
       r = calc.decreaseBy(x, y);
-      html = `${N(y)} decreased by ${N(x)}% = <strong>${N(r)}</strong>`;
+      htmlNumeric = `<strong>${N(r)}</strong>`;
+      htmlText = `${N(y)} decreased by ${N(x)}% = ${N(r)}`;
       text = `${y} decreased by ${x}% = ${r}`;
     }
   } else if (mode === 'what') {
@@ -100,10 +105,12 @@ function computeNow(mode) {
     if (!isNaN(a) && !isNaN(b)) {
       try {
         r = calc.whatPercent(a, b);
-        html = `${N(a)} is <strong>${N(r)}%</strong> of ${N(b)}`;
+        htmlNumeric = `<strong>${N(r)}%</strong>`;
+        htmlText = `${N(a)} is ${N(r)}% of ${N(b)}`;
         text = `${a} is ${r}% of ${b}`;
       } catch (err) {
-        html = `<span style="color:var(--danger);">${err.message}</span>`;
+        htmlNumeric = `<span style="color:var(--danger);">${err.message}</span>`;
+        htmlText = err.message;
         text = err.message;
       }
     }
@@ -112,18 +119,20 @@ function computeNow(mode) {
     const newVal = num($('diff-new').value);
     if (!isNaN(oldVal) && !isNaN(newVal)) {
       if (oldVal === 0) {
-        html = `<span style="color:var(--danger);">Cannot calculate: Old value is zero</span>`;
+        htmlNumeric = `<span style="color:var(--danger);">Cannot calculate</span>`;
+        htmlText = 'Cannot calculate: Old value is zero';
         text = 'Cannot calculate: Old value is zero';
       } else {
         r = ((newVal - oldVal) / oldVal) * 100;
         const lbl = r > 0 ? 'increase' : (r < 0 ? 'decrease' : 'no change');
-        html = `${N(oldVal)} → ${N(newVal)} = <strong>${N4(r)}%</strong> ${lbl}`;
+        htmlNumeric = `<strong>${N4(r)}%</strong>`;
+        htmlText = `${N(oldVal)} → ${N(newVal)} = ${N4(r)}% ${lbl}`;
         text = `${oldVal} → ${newVal} = ${r}% ${lbl}`;
       }
     }
   }
 
-  return { r, html, text };
+  return { r, htmlNumeric, htmlText, text };
 }
 
 // Clear result container for a panel
@@ -139,15 +148,26 @@ function clearResult(panelEl) {
 }
 
 // Show result in a panel
-function showResult(panelEl, html, text) {
-  const resultContainer = panelEl.querySelector('.result-container');
-  if (resultContainer) {
-    resultContainer.style.display = 'block';
-    const resultInline = resultContainer.querySelector('.result-inline');
-    const resultMsg = resultContainer.querySelector('.result-msg');
-    if (resultInline) resultInline.innerHTML = html;
-    if (resultMsg) resultMsg.textContent = text;
+function showResult(panelEl, htmlNumeric, htmlText) {
+  const rc = panelEl.querySelector('.result-container');
+  if (!rc) return;
+  const inline = rc.querySelector('.result-inline');
+  const msg = rc.querySelector('.result-msg');
+
+  // Reveal container
+  rc.style.display = 'block';
+
+  // Put only the numeric HTML into the large display
+  if (inline) {
+    inline.innerHTML = htmlNumeric || '';
   }
+
+  // Put the explanatory text into the smaller message area (tooltip area)
+  if (msg) {
+    msg.innerHTML = htmlText || '';
+  }
+
+  // aria-live areas on the DOM will announce as appropriate
 }
 
 // Tab selection
@@ -327,7 +347,8 @@ Object.keys(panels).forEach(mode => {
     const result = computeNow(mode);
     
     if (!isNaN(result.r)) {
-      showResult(panel, result.html, result.text);
+      // Show numeric result and explanatory text separately
+      showResult(panel, result.htmlNumeric, result.htmlText);
       
       // Add to history
       const inputs = readInputsFor(mode);
@@ -338,9 +359,9 @@ Object.keys(panels).forEach(mode => {
         value: result.r
       };
       addHistoryEntry(entry);
-    } else if (result.html) {
-      // Show error
-      showResult(panel, result.html, result.text);
+    } else if (result.htmlText) {
+      // Show error (use htmlText as message and htmlNumeric for inline if provided)
+      showResult(panel, result.htmlNumeric, result.htmlText);
     }
   });
 
