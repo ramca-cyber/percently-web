@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeNumberInput } from '../normalize-number'
+import { normalizeNumberInput } from '../normalize-number.js'
 
 describe('normalizeNumberInput', () => {
   it('parses dot decimal and commas as thousands', () => {

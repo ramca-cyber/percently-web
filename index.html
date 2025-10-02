@@ -68,14 +68,13 @@
             </div>
             <div class="right-col">
               <div class="input-caption">Result</div>
-              <div class="result-container" style="display:none;">
-                <div class="eq-row">
-                  <div class="equals">=</div>
+              <div class="eq-row">
+                <div class="equals">=</div>
+                <div class="result-container" style="display:none;">
                   <div class="result-inline" aria-live="polite"></div>
-                  <button type="button" class="result-copy-btn" title="Copy link for this calculation" aria-label="Copy link for this calculation"></button>
                 </div>
-                <div class="result-msg" aria-live="polite"></div>
               </div>
+              <div class="result-msg" aria-live="polite"></div>
             </div>
           </div>
           <div class="actions-below hidden">
@@ -104,14 +103,13 @@
             </div>
             <div class="right-col">
               <div class="input-caption">Result</div>
-              <div class="result-container" style="display:none;">
-                <div class="eq-row">
-                  <div class="equals">=</div>
+              <div class="eq-row">
+                <div class="equals">=</div>
+                <div class="result-container" style="display:none;">
                   <div class="result-inline" aria-live="polite"></div>
-                  <button type="button" class="result-copy-btn" title="Copy link for this calculation" aria-label="Copy link for this calculation"></button>
                 </div>
-                <div class="result-msg" aria-live="polite"></div>
               </div>
+              <div class="result-msg" aria-live="polite"></div>
             </div>
           </div>
           <div class="actions-below hidden">
@@ -140,14 +138,13 @@
             </div>
             <div class="right-col">
               <div class="input-caption">Result</div>
-              <div class="result-container" style="display:none;">
-                <div class="eq-row">
-                  <div class="equals">=</div>
+              <div class="eq-row">
+                <div class="equals">=</div>
+                <div class="result-container" style="display:none;">
                   <div class="result-inline" aria-live="polite"></div>
-                  <button type="button" class="result-copy-btn" title="Copy link for this calculation" aria-label="Copy link for this calculation"></button>
                 </div>
-                <div class="result-msg" aria-live="polite"></div>
               </div>
+              <div class="result-msg" aria-live="polite"></div>
             </div>
           </div>
           <div class="actions-below hidden">
@@ -176,14 +173,13 @@
             </div>
             <div class="right-col">
               <div class="input-caption">Result</div>
-              <div class="result-container" style="display:none;">
-                <div class="eq-row">
-                  <div class="equals">=</div>
+              <div class="eq-row">
+                <div class="equals">=</div>
+                <div class="result-container" style="display:none;">
                   <div class="result-inline" aria-live="polite"></div>
-                  <button type="button" class="result-copy-btn" title="Copy link for this calculation" aria-label="Copy link for this calculation"></button>
                 </div>
-                <div class="result-msg" aria-live="polite"></div>
               </div>
+              <div class="result-msg" aria-live="polite"></div>
             </div>
           </div>
           <div class="actions-below hidden">
@@ -212,14 +208,13 @@
             </div>
             <div class="right-col">
               <div class="input-caption">Result</div>
-              <div class="result-container" style="display:none;">
-                <div class="eq-row">
-                  <div class="equals">=</div>
+              <div class="eq-row">
+                <div class="equals">=</div>
+                <div class="result-container" style="display:none;">
                   <div class="result-inline" aria-live="polite"></div>
-                  <button type="button" class="result-copy-btn" title="Copy link for this calculation" aria-label="Copy link for this calculation"></button>
                 </div>
-                <div class="result-msg" aria-live="polite"></div>
               </div>
+              <div class="result-msg" aria-live="polite"></div>
             </div>
           </div>
           <div class="actions-below hidden">
@@ -229,16 +224,18 @@
         </form>
       </div>
 
-      <footer class="compact-footer">
-        <div style="display:flex; gap:0.5rem; justify-content:center; align-items:center; margin-top:8px;">
-          <button id="clear-history" class="bar-btn secondary">Clear history</button>
-        </div>
-      </footer>
+    </section>
 
-      <aside style="margin-top:12px;">
-        <h3 style="margin:0 0 8px 0;">History</h3>
+    <!-- History card separated from calculator for clarity -->
+    <section class="compact-card history-card" aria-label="History">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <h3 style="margin:0;">History</h3>
+        <button id="clear-history" class="bar-btn secondary">Clear history</button>
+      </div>
+      <div style="margin-top:12px;">
         <div id="history-list" class="history" aria-live="polite"></div>
-      </aside>
+      </div>
+    </section>
     </section>
 
     <footer class="compact-footer" style="text-align:center; margin-top:18px;">
