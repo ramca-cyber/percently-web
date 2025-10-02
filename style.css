@@ -72,8 +72,9 @@ body{
 /* Split rectangle: left inputs / right result */
 .split-rect{
   display:grid;
-  grid-template-columns: 1fr 360px;
-  gap:0;
+  /* allow the right column to shrink but keep a usable minimum */
+  grid-template-columns: 1fr minmax(220px, 360px);
+  gap:12px;
   margin-top:12px;
   align-items:stretch;
 }
@@ -95,7 +96,8 @@ body{
 }
 
 /* Right column (result) */
-.right-col{padding:18px;border-left:1px solid rgba(13,30,57,0.04);display:flex;flex-direction:column;align-items:stretch;justify-content:center}
+/* soften divider color and switch to subtle inset divider for large screens */
+.right-col{padding:18px;border-left:1px solid rgba(13,30,57,0.03);display:flex;flex-direction:column;align-items:stretch;justify-content:center}
 .input-caption{font-weight:600}
 .result-container{
   background: linear-gradient(180deg,#f6fbff,#eef7ff);
@@ -113,18 +115,20 @@ body{
 .eq-row{display:flex;align-items:center;gap:8px}
 .equals{font-size:20px;color:#0b2f48;font-weight:700}
 .result-inline{
-  font-size:var(--result-font-size);
+  /* make the result font-size responsive while keeping the CSS variable as max */
+  font-size: clamp(32px, 6vw, var(--result-font-size));
   line-height:0.9;
   font-weight:800;
   color:var(--result-color);
   text-align:center;
   padding:6px 8px;
   display:inline-block;
-  min-width:120px;
+  min-width:0; /* allow it to shrink/wrap instead of forcing overflow */
   cursor: pointer;
   position: relative;
   border-radius: 6px;
   transition: transform 150ms ease, box-shadow 150ms ease, background-color 180ms ease;
+  word-break: break-word;
 }
 .result-inline:hover,
 .result-inline:focus {
@@ -242,6 +246,22 @@ body{
 .history{margin-top:8px;display:flex;flex-direction:column;gap:8px}
 .history .bar-btn{font-size:0.75rem;padding:6px 8px}
 .history span{font-size:0.9rem;color:var(--muted)}
+
+/* New: history-item class to replace inline styles */
+.history-item{
+  display:flex;
+  gap:0.5rem;
+  align-items:center;
+  padding:0.5rem;
+  background:var(--bg-secondary);
+  border-radius:0.25rem;
+}
+.history-item:hover,
+.history-item:focus-within{
+  background: #f1f6fb;
+}
+.history-item .history-text{flex:1;font-size:0.875rem;color:var(--muted);}
+.history-item .history-actions{display:flex;gap:0.5rem}
 
 /* Accessible helper */
 .sr-only{ position:absolute !important; height:1px; width:1px; overflow:hidden; clip:rect(1px,1px,1px,1px); white-space:nowrap; }
