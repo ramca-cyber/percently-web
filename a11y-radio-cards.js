@@ -7,7 +7,9 @@
     card.setAttribute('tabindex', '0');
 
     card.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+      const isEnter = e.key === 'Enter';
+      const isSpace = e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space';
+      if (isEnter || isSpace) {
         e.preventDefault();
         const forId = card.getAttribute('for') || card.htmlFor;
         if (forId) {
@@ -27,8 +29,10 @@
       const forId = card.getAttribute('for') || card.htmlFor;
       if (forId) {
         const radio = document.getElementById(forId);
-        if (radio) radio.checked = true;
-        radio && radio.dispatchEvent(new Event('change', { bubbles: true }));
+        if (radio) {
+          radio.checked = true;
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
       }
     });
   });

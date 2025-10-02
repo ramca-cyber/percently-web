@@ -7,6 +7,8 @@
   <meta name="description" content="Percently: quick, accurate percentage calculations — large, readable inputs and clear labels." />
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="favicon.ico">
+  <!-- Inline tiny transparent favicon to avoid 404 when favicon.ico is missing -->
+  <link rel="icon" href="data:image/x-icon;utf8,AAABAAEAICAAAAEAIACoEAAAFgAAACgAAAAgAAAAQAAAAAEAIAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD///8A" />
 </head>
 <body>
   <main class="wrap compact">
@@ -77,5 +79,51 @@
     </footer>
   </main>
   <script type="module" src="main.js"></script>
+  <script>
+    // Enforce two-decimal display on #result without changing main.js
+    (function(){
+      const resultEl = document.getElementById('result');
+      if (!resultEl) return;
+
+      function formatAndSet(text) {
+        // If text already contains a percent sign, handle separately
+        const hasPercent = /%\s*$/.test(text);
+        const cleaned = String(text).replace(/[^0-9+\-eE.,%]/g, '').replace(/%/g, '').trim();
+        // Try to parse using the same normalization heuristic (comma/dot)
+        let val = NaN;
+        if (cleaned !== '') {
+          // Prefer parseFloat on normalized string: convert comma decimal to dot when appropriate
+          const lastComma = cleaned.lastIndexOf(',');
+          const lastDot = cleaned.lastIndexOf('.');
+          if (lastComma !== -1 && lastDot !== -1 && lastComma > lastDot) {
+            val = Number(cleaned.replace(/\./g,'').replace(/,([^,]*)$/, '.$1'));
+          } else {
+            val = Number(cleaned.replace(/,/g, ''));
+          }
+        }
+
+        if (typeof val === 'number' && isFinite(val)) {
+          const out = val.toFixed(2);
+          resultEl.textContent = hasPercent ? out + '%' : out;
+        } else {
+          // leave non-numeric text unchanged
+          resultEl.textContent = text;
+        }
+      }
+
+      const mo = new MutationObserver(muts => {
+        for (const m of muts) {
+          if (m.type === 'childList') {
+            const newText = resultEl.textContent;
+            if (newText && newText.length) formatAndSet(newText);
+          }
+        }
+      });
+      mo.observe(resultEl, { childList: true, characterData: true, subtree: true });
+
+      // Also format initial content if any
+      if (resultEl.textContent && resultEl.textContent.trim()) formatAndSet(resultEl.textContent.trim());
+    })();
+  </script>
 </body>
 </html>

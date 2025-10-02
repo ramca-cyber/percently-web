@@ -8,8 +8,8 @@ export function normalizeNumberInput(raw) {
   const lastComma = s.lastIndexOf(',');
   const lastDot = s.lastIndexOf('.');
 
-  // If both separators present and comma is last -> treat comma as decimal
-  if (lastComma > lastDot) {
+  // Only treat comma as decimal when both separators exist and comma comes after the dot
+  if (lastComma !== -1 && lastDot !== -1 && lastComma > lastDot) {
     const withoutDots = s.replace(/\./g, '');
     const normalized = withoutDots.replace(/,([^,]*)$/, '.$1');
     return Number(normalized);
