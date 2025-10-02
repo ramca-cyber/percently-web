@@ -4,6 +4,7 @@ import * as calc from './calc.js';
 
 const HISTORY_KEY = 'percently_history_v3';
 const MAX_HISTORY = 30;
+const INPUTS_KEY = 'percently_inputs_v1'; // session persistence for inputs across panels
 
 let currentMode = 'of'; // 'of', 'inc', 'dec', 'what', 'diff'
 
@@ -62,6 +63,55 @@ function readInputsFor(mode) {
 
 // Helper to get element by id
 function $(id) { return document.getElementById(id); }
+
+// Persist all panels' inputs to sessionStorage
+function saveAllInputs() {
+  try {
+    const data = {
+      of: readInputsFor('of'),
+      inc: readInputsFor('inc'),
+      dec: readInputsFor('dec'),
+      what: readInputsFor('what'),
+      diff: readInputsFor('diff')
+    };
+    sessionStorage.setItem(INPUTS_KEY, JSON.stringify(data));
+  } catch (err) {
+    // fail silently on storage errors
+  }
+}
+
+// Load inputs from sessionStorage into DOM (does not override URL-loaded values if called after loadFromURL)
+function loadAllInputs() {
+  try {
+    const raw = sessionStorage.getItem(INPUTS_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (!data) return;
+
+    if (data.of) {
+      if (typeof data.of.x === 'string' && $('of-x')) $('of-x').value = data.of.x;
+      if (typeof data.of.y === 'string' && $('of-y')) $('of-y').value = data.of.y;
+    }
+    if (data.inc) {
+      if (typeof data.inc.x === 'string' && $('inc-x')) $('inc-x').value = data.inc.x;
+      if (typeof data.inc.y === 'string' && $('inc-y')) $('inc-y').value = data.inc.y;
+    }
+    if (data.dec) {
+      if (typeof data.dec.x === 'string' && $('dec-x')) $('dec-x').value = data.dec.x;
+      if (typeof data.dec.y === 'string' && $('dec-y')) $('dec-y').value = data.dec.y;
+    }
+    if (data.what) {
+      if (typeof data.what.a === 'string' && $('what-a')) $('what-a').value = data.what.a;
+      if (typeof data.what.b === 'string' && $('what-b')) $('what-b').value = data.what.b;
+    }
+    if (data.diff) {
+      if (typeof data.diff.old === 'string' && $('diff-old')) $('diff-old').value = data.diff.old;
+      if (typeof data.diff.new === 'string' && $('diff-new')) $('diff-new').value = data.diff.new;
+    }
+  } catch (err) {
+    // ignore parse errors
+  }
+}
 
 // Compute result for current mode
 function computeNow(mode) {
@@ -218,7 +268,7 @@ function loadFromURL() {
   if (mode && panels[mode]) {
     selectTab(mode, true);
     
-    // Hydrate inputs but don't compute
+    // Hydrate inputs but don't compute (URL overrides stored values)
     if (mode === 'of') {
       if (params.has('x')) $('of-x').value = params.get('x');
       if (params.has('y')) $('of-y').value = params.get('y');
@@ -235,6 +285,9 @@ function loadFromURL() {
       if (params.has('old')) $('diff-old').value = params.get('old');
       if (params.has('new')) $('diff-new').value = params.get('new');
     }
+
+    // persist the URL-provided values into session storage
+    saveAllInputs();
   }
 }
 
@@ -320,6 +373,9 @@ $('history-list').addEventListener('click', async (e) => {
       $('diff-new').value = item.params.new || '';
     }
     
+    // persist loaded history values so they are retained when switching panels
+    saveAllInputs();
+
     clearResult(panels[item.mode]);
     focusFirstInput();
   }
@@ -372,14 +428,18 @@ Object.keys(panels).forEach(mode => {
     inputs.forEach(inp => inp.value = '');
     clearResult(panel);
     focusFirstInput();
+    // persist cleared state
+    saveAllInputs();
+    updateURL();
   });
 
-  // Input change handlers - clear result and update URL
+  // Input change handlers - clear result, update URL and persist all inputs
   const inputs = panel.querySelectorAll('input[type="text"]');
   inputs.forEach(inp => {
     inp.addEventListener('input', () => {
       clearResult(panel);
       updateURL();
+      saveAllInputs();
     });
 
     // Enter key submits
@@ -392,6 +452,7 @@ Object.keys(panels).forEach(mode => {
   });
 });
 
-// Initialize
+// Initialize: load stored inputs, then allow URL to override, then render history
+loadAllInputs();
 loadFromURL();
 renderHistory();
