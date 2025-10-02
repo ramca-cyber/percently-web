@@ -158,10 +158,7 @@ function showToast(msg, duration = 3000) {
 }
 
 // Small inline SVG for copy/link icon
-const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-left:6px; fill:none; stroke:currentColor; stroke-width:2">` +
-  `<rect x="9" y="9" width="10" height="10" rx="2"></rect>` +
-  `<path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"></path>` +
-`</svg>`;
+const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-left:6px; fill:none; stroke:currentColor; stroke-w[...]\n  <rect x="9" y="9" width="10" height="10" rx="2"></rect>\n  <path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"></path>\n</svg>`;
 
 // Generic copy-to-clipboard with fallback; returns Promise<boolean>
 function copyTextToClipboard(text) {
@@ -641,6 +638,14 @@ Object.keys(panels).forEach(mode => {
   // Submit handler
   form.addEventListener('submit', (e) => {
     e.preventDefault();
+    // Read inputs up front so we can compare before computing
+    const inputs = readInputsFor(mode);
+
+    // Skip recalculation if inputs haven't changed since last compute for the same mode
+    if (lastComputedEntry && lastComputedEntry.mode === mode && deepEqual(lastComputedEntry.params, inputs)) {
+      return; // do nothing; keep existing visible result
+    }
+
     const result = computeNow(mode);
     
     if (!isNaN(result.r)) {
@@ -651,7 +656,6 @@ Object.keys(panels).forEach(mode => {
       if (lastComputedEntry) addHistoryEntry(lastComputedEntry);
 
       // Update lastComputedEntry so it will be added on the next submission
-      const inputs = readInputsFor(mode);
       lastComputedEntry = {
         mode,
         params: inputs,
