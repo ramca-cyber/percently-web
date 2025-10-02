@@ -19,3 +19,8 @@ export function whatPercent(x, y) {
   if (Number(y) === 0) throw new Error('Divide by zero');
   return (Number(x) / Number(y)) * 100;
 }
+export function percentChange(oldVal, newVal) {
+  const a = Number(oldVal), b = Number(newVal);
+  if (a === 0) throw new Error('Old value cannot be zero');
+  return ((b - a) / a) * 100;
+}
