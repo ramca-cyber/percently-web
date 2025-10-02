@@ -130,7 +130,8 @@ body{
   align-items:center;
   min-height:44px;
 }
-.actions-below.hidden > * { display:none; }
+/* Only hides elements with .secondary class inside a hidden actions container */
+.actions-below.hidden .secondary { display: none; }
 
 /* Buttons */
 .bar-btn{
