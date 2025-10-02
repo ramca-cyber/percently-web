@@ -161,7 +161,8 @@ function showToast(msg, duration = 3000) {
 }
 
 // Small inline SVG for copy icon (used for Link buttons and inline result copy)
-const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:6px; fill:none; stroke:currentColor; stroke-width:2">` +
+// NOTE: margin-left so the icon appears to the right of the label text.
+const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-left:6px; fill:none; stroke:currentColor; stroke-width:2">` +
   `<rect x="9" y="9" width="10" height="10" rx="2"></rect>` +
   `<path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"></path>` +
 `</svg>`;
@@ -175,7 +176,9 @@ function showCopyButtonFeedback(btn, { label = 'Copied', duration = 2000 } = {})
   if (!btn.dataset.origColor) btn.dataset.origColor = btn.style.color || '';
 
   // apply feedback state (keep icon + label)
-  btn.innerHTML = `${LINK_ICON_SVG}<span style="vertical-align:middle;">${label}</span>`;
+  // Place the icon to the right of the visible label
+  const visibleLabel = btn.dataset.origHtml ? btn.dataset.origHtml : '<span>Link</span>';
+  btn.innerHTML = `${visibleLabel}${LINK_ICON_SVG}<span style="vertical-align:middle; margin-left:8px;">${label}</span>`;
   btn.disabled = true;
   btn.style.background = '#2E8B57'; // success green
   btn.style.color = '#fff';
@@ -183,7 +186,7 @@ function showCopyButtonFeedback(btn, { label = 'Copied', duration = 2000 } = {})
   // revert after timeout
   setTimeout(() => {
     btn.disabled = false;
-    btn.innerHTML = btn.dataset.origHtml || (LINK_ICON_SVG + '<span>Link</span>');
+    btn.innerHTML = btn.dataset.origHtml || (`<span>Link</span>${LINK_ICON_SVG}`);
     btn.style.background = btn.dataset.origBg || '';
     btn.style.color = btn.dataset.origColor || '';
   }, duration);
@@ -232,6 +235,9 @@ function copyTextToClipboard(text) {
 }
 
 // Shared inline copy feedback and helper (used by result value, small copy button, and history link buttons)
+// Important change: we no longer overwrite the visible result-msg area. Instead we announce via a
+// visually-hidden aria-live element (scoped to the result-container) or a global live region.
+// This prevents the explanatory text from being replaced/cleared.
 async function copyAndFlash(el, text, okMsg = 'Copied', failMsg = 'Copy failed', duration = 1400) {
   if (!el || !text) return false;
   const ok = await copyTextToClipboard(text);
@@ -241,11 +247,17 @@ async function copyAndFlash(el, text, okMsg = 'Copied', failMsg = 'Copy failed',
   el.classList.remove('copied', 'copy-failed');
   if (ok) el.classList.add('copied'); else el.classList.add('copy-failed');
 
-  // Announce for assistive tech: prefer result-msg in nearest result-container
+  // Announce for assistive tech using a hidden aria-live element scoped to the nearest result-container
   const container = el.closest('.result-container');
   if (container) {
-    const msgEl = container.querySelector('.result-msg');
-    if (msgEl) msgEl.textContent = ok ? okMsg : failMsg;
+    let live = container.querySelector('.copy-sr-live');
+    if (!live) {
+      live = document.createElement('div');
+      live.className = 'sr-only copy-sr-live';
+      live.setAttribute('aria-live', 'polite');
+      container.appendChild(live);
+    }
+    live.textContent = ok ? okMsg : failMsg;
   } else {
     // fallback global sr-live
     let sr = document.getElementById('percently-sr-live');
@@ -262,8 +274,8 @@ async function copyAndFlash(el, text, okMsg = 'Copied', failMsg = 'Copy failed',
   el._copyTimeout = setTimeout(() => {
     el.classList.remove('copied', 'copy-failed');
     if (container) {
-      const msgEl = container.querySelector('.result-msg');
-      if (msgEl) msgEl.textContent = '';
+      const live = container.querySelector('.copy-sr-live');
+      if (live) live.textContent = '';
     } else {
       const sr = document.getElementById('percently-sr-live');
       if (sr) sr.textContent = '';
@@ -542,7 +554,7 @@ function renderHistory() {
         <span class="history-text">${escapeHtml(item.text)}</span>
         <div class="history-actions">
           <button class="bar-btn secondary" data-action="load" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">Load</button>
-          <button class="bar-btn primary link-copy" data-action="link" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;">${LINK_ICON_SVG}<span>Link</span></button>
+          <button class="bar-btn primary link-copy" data-action="link" data-idx="${idx}" style="padding:0.25rem 0.5rem; font-size:0.75rem;"><span>Link</span>${LINK_ICON_SVG}</button>
         </div>
       </div>
     `;
@@ -569,26 +581,26 @@ function buildUrlForHistoryItem(item) {
 }
 
 // History click handler (event delegation)
+// IMPORTANT: only buttons inside the history list trigger actions now.
+// Clicking the row text (history-item) will NOT trigger load — Load works only when its button is clicked.
 $('history-list').addEventListener('click', async (e) => {
   const btn = e.target.closest('button');
-  const itemEl = e.target.closest('.history-item');
-  if (!btn && !itemEl) return;
+  if (!btn) return; // ignore clicks that are not on a button
 
-  // determine index and action
-  const idx = +(btn ? btn.dataset.idx : itemEl.dataset.idx);
+  const idx = +btn.dataset.idx;
   const arr = loadHistory();
   const item = arr[idx];
   if (!item) return;
 
-  const action = btn ? btn.dataset.action : 'load';
+  const action = btn.dataset.action;
 
   if (action === 'link') {
     // Copy a permalink URL that recreates this calculation
     const url = buildUrlForHistoryItem(item);
     try {
       // Use the unified inline feedback helper for consistency
-      if (btn) btn.classList.add('link-copy');
-      await copyAndFlash(btn || itemEl, url, 'Link copied to clipboard', url);
+      btn.classList.add('link-copy');
+      await copyAndFlash(btn, url, 'Link copied to clipboard', url);
     } catch {
       // fallback to showing the url in a toast if copy somehow fails
       showToast(url, 6000);
@@ -732,7 +744,8 @@ Object.keys(panels).forEach(mode => {
     // Make the small copy-link button produce a permalink for this panel (auto=1)
     if (copyBtn) {
       // ensure the button contains the copy SVG so it can be revealed on hover
-      if (!copyBtn.innerHTML.trim()) copyBtn.innerHTML = `${LINK_ICON_SVG}<span class="sr-only">Copy link for this calculation</span>`;
+      // place any visible label before the icon so the icon appears on the right
+      if (!copyBtn.innerHTML.trim()) copyBtn.innerHTML = `<span class="sr-only">Copy link for this calculation</span>${LINK_ICON_SVG}`;
       copyBtn.setAttribute('title', 'Copy link for this calculation');
       copyBtn.setAttribute('aria-label', 'Copy link for this calculation');
 
