@@ -5,11 +5,11 @@
   --fg: #06243a;
   --accent: #0b74ff;
   --danger: #e03e3e;
-  --card-radius: 12px;
-  --card-padding: 18px;
-  --result-font-size: 72px;
+  --card-radius: 10px;
+  --card-padding: 12px;
+  --result-font-size: 56px;
   --result-color: #0b62d6;
-  --shadow-elev: 0 10px 30px rgba(10,30,60,0.06);
+  --shadow-elev: 0 8px 20px rgba(10,30,60,0.06);
   --border: 1px solid rgba(13,30,57,0.06);
   --selected-bg-start: #eaf4ff;
   --selected-bg-end: #dbefff;
@@ -26,12 +26,12 @@ body{
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
   line-height:1.35;
-  padding:24px;
+  padding:16px;
 }
 
 /* Layout helpers */
-.wrap{max-width:1150px;margin:0 auto}
-.compact{padding:8px}
+.wrap{max-width:980px;margin:0 auto}
+.compact{padding:6px}
 .compact-card{
   background:var(--bg);
   border-radius:var(--card-radius);
@@ -41,22 +41,22 @@ body{
 }
 
 /* Header */
-.site-header{margin-bottom:12px}
-.title{margin:0;font-size:20px;font-weight:600}
-.subtitle{margin:4px 0 0;color:var(--muted);font-size:13px}
+.site-header{margin-bottom:10px}
+.title{margin:0;font-size:18px;font-weight:600}
+.subtitle{margin:4px 0 0;color:var(--muted);font-size:12px}
 
 /* Options row (tabs / radio-like cards) */
 .options-row{display:flex;gap:8px;flex-wrap:wrap}
-.options-row.boxed{padding:8px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbfdff); border:var(--border)}
+.options-row.boxed{padding:6px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbfdff); border:var(--border)}
 .option-card{
   background:transparent;
-  border-radius:10px;
-  padding:10px 14px;
+  border-radius:8px;
+  padding:8px 12px;
   border:1px solid rgba(13,30,57,0.06);
   cursor:pointer;
   color:var(--muted);
   transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
-  font-size:15px; /* increased tab font size */
+  font-size:14px; /* slightly smaller */
 }
 .option-card[role="tab"][aria-selected="true"]{
   background: linear-gradient(180deg,var(--selected-bg-start), var(--selected-bg-end));
@@ -65,7 +65,7 @@ body{
   transform: translateY(-2px);
   border: 1px solid rgba(11,116,255,0.12);
   z-index: 2;
-  font-size:16px; /* slightly larger when selected */
+  font-size:15px; /* slightly larger when selected */
   font-weight:700;
 }
 
@@ -73,21 +73,21 @@ body{
 .split-rect{
   display:grid;
   /* allow the right column to shrink but keep a usable minimum */
-  grid-template-columns: 1fr minmax(220px, 360px);
-  gap:12px;
-  margin-top:12px;
+  grid-template-columns: 1fr minmax(180px, 320px);
+  gap:10px;
+  margin-top:10px;
   align-items:stretch;
 }
 
 /* Left column inputs */
-.left-col{padding:18px}
-.input-wrap{margin-bottom:18px}
-.input-caption{display:block;color:var(--muted);margin-bottom:8px;font-size:13px}
+.left-col{padding:12px}
+.input-wrap{margin-bottom:12px}
+.input-caption{display:block;color:var(--muted);margin-bottom:6px;font-size:12px}
 .big-input{
   width:100%;
-  border-radius:10px;
-  padding:18px;
-  font-size:40px;
+  border-radius:8px;
+  padding:12px;
+  font-size:28px;
   font-weight:700;
   border:1px solid rgba(13,30,57,0.06);
   background:linear-gradient(180deg,#fff,#fbfdff);
@@ -96,14 +96,13 @@ body{
 }
 
 /* Right column (result) */
-/* soften divider color and switch to subtle inset divider for large screens */
-.right-col{padding:18px;border-left:1px solid rgba(13,30,57,0.03);display:flex;flex-direction:column;align-items:stretch;justify-content:center}
+.right-col{padding:12px;border-left:1px solid rgba(13,30,57,0.03);display:flex;flex-direction:column;align-items:stretch;justify-content:center}
 .input-caption{font-weight:600}
 .result-container{
   background: linear-gradient(180deg,#f6fbff,#eef7ff);
-  border-radius:12px;
-  padding:18px;
-  min-height:180px;
+  border-radius:10px;
+  padding:12px;
+  min-height:140px;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -113,11 +112,11 @@ body{
   width:100%;
 }
 .eq-row{display:flex;align-items:center;gap:8px}
-.equals{font-size:20px;color:#0b2f48;font-weight:700}
+.equals{font-size:18px;color:#0b2f48;font-weight:700}
 .result-inline{
   /* make the result font-size responsive while keeping the CSS variable as max */
-  font-size: clamp(32px, 6vw, var(--result-font-size));
-  line-height:0.9;
+  font-size: clamp(24px, 5vw, var(--result-font-size));
+  line-height:0.95;
   font-weight:800;
   color:var(--result-color);
   text-align:center;
@@ -126,26 +125,28 @@ body{
   min-width:0; /* allow it to shrink/wrap instead of forcing overflow */
   position: relative;
   border-radius: 6px;
-  transition: transform 150ms ease, box-shadow 150ms ease, background-color 180ms ease;
+  transition: box-shadow 150ms ease, background-color 180ms ease;
   word-break: break-word;
+  cursor: default; /* not an interactive hover target */
 }
+/* remove hover transform and highlight on the big result - keep static */
 .result-inline:hover,
 .result-inline:focus {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(11,116,255,0.06);
-  background: rgba(11,116,255,0.06);
+  transform: none;
+  box-shadow: none;
+  background: transparent;
   outline: none;
 }
-.result-msg{margin-top:10px;color:var(--muted);font-size:13px;text-align:center}
+.result-msg{margin-top:8px;color:var(--muted);font-size:12px;text-align:center}
 
 /* Actions below (Calculate / Clear) - reserve area to avoid layout shift */
 .actions-below{
-  margin-top:14px;
+  margin-top:12px;
   display:flex;
-  gap:0.75rem;
+  gap:0.5rem;
   justify-content:center;
   align-items:center;
-  min-height:44px;
+  min-height:40px;
 }
 /* Only hides elements with .secondary class inside a hidden actions container */
 .actions-below.hidden .secondary { display: none; }
@@ -153,7 +154,7 @@ body{
 /* Buttons */
 .bar-btn{
   border-radius:999px;
-  padding:10px 18px;
+  padding:8px 14px;
   border:0;
   cursor:pointer;
   font-weight:700;
@@ -162,7 +163,7 @@ body{
 .bar-btn.primary{
   background:var(--accent);
   color:#fff; /* ensure white text on primary */
-  box-shadow: 0 10px 20px rgba(11,116,255,0.08);
+  box-shadow: 0 8px 18px rgba(11,116,255,0.08);
 }
 /* make sure any span inside primary inherits the white color */
 .bar-btn.primary span { color: inherit; }
@@ -175,43 +176,17 @@ body{
   color:var(--fg);
 }
 
-/* result-actions container (top-right of result) */
-.result-actions{position:absolute;top:10px;right:10px;display:flex;gap:8px;align-items:center}
+/* result-actions container (center-right of result, vertical stack) */
+.result-actions{position:absolute;top:50%;right:12px;transform:translateY(-50%);display:flex;gap:8px;align-items:center;flex-direction:column}
 .result-actions .bar-btn{padding:6px 10px;font-size:0.85rem}
 
-/* Copy button styles (shared) */
-.result-copy-btn{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  border:0;
-  background:transparent;
-  color:inherit;
-  font:inherit;
-  cursor:pointer;
-  padding:6px;
-  border-radius:6px;
-  position:relative;
-  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, opacity 160ms ease, transform 160ms ease;
-}
-.result-copy-btn:hover,
-.result-copy-btn:focus {
-  transform: translateY(0);
-  box-shadow: 0 8px 18px rgba(11,116,255,0.06);
-  background: rgba(11,116,255,0.06);
-}
-
-/* Link button icon visibility */
-.bar-btn.link-copy svg { opacity: 0; transform: translateX(-4px); transition: opacity 160ms ease, transform 160ms ease; }
-.bar-btn.link-copy:hover svg,
-.bar-btn.link-copy:focus-visible svg,
-.bar-btn.link-copy.copied svg,
-.bar-btn.link-copy.copy-failed svg { opacity: 1; transform: translateX(0); }
+/* Ensure link icons are always visible */
+.bar-btn.link-copy svg { opacity: 1; transform: none; }
 
 /* Copied state: small badge (shared for inline value & buttons) */
 .result-inline.copied,
 .result-copy-btn.copied,
-.bar-btn.link-copy.copied { background: rgba(46,139,87,0.08); box-shadow: 0 10px 20px rgba(46,139,87,0.06); }
+.bar-btn.link-copy.copied { background: rgba(46,139,87,0.08); box-shadow: 0 8px 16px rgba(46,139,87,0.06); }
 .result-inline.copied::after,
 .result-copy-btn.copied,
 .bar-btn.link-copy.copied::after {
@@ -254,8 +229,6 @@ body{
 .history{margin-top:8px;display:flex;flex-direction:column;gap:8px}
 .history .bar-btn{font-size:0.75rem;padding:6px 8px}
 .history span{font-size:0.9rem;color:var(--muted)}
-
-/* New: history-item class to replace inline styles */
 .history-item{
   display:flex;
   gap:0.5rem;
@@ -269,7 +242,7 @@ body{
 .history-item:focus-within{
   background: #f1f6fb;
 }
-.history-item .history-text{flex:1;font-size:0.875rem;color:var(--muted);}
+.history-item .history-text{flex:1;font-size:0.875rem;color:var(--muted)}
 .history-item .history-actions{display:flex;gap:0.5rem}
 
 /* Accessible helper */
@@ -277,14 +250,14 @@ body{
 
 /* Responsive */
 @media (max-width:920px) {
-  :root { --result-font-size: 50px; }
+  :root { --result-font-size: 48px; }
   .split-rect{ grid-template-columns: 1fr 220px; }
 }
 @media (max-width:720px) {
   .split-rect{ grid-template-columns: 1fr; }
   .right-col{ order:2; border-left:0; border-top:1px solid rgba(13,30,57,0.04); }
   .left-col{ order:1 }
-  .result-container{ min-height:140px }
+  .result-container{ min-height:120px }
 }
 
 /* Small utility */
