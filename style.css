@@ -124,7 +124,6 @@ body{
   padding:6px 8px;
   display:inline-block;
   min-width:0; /* allow it to shrink/wrap instead of forcing overflow */
-  cursor: pointer;
   position: relative;
   border-radius: 6px;
   transition: transform 150ms ease, box-shadow 150ms ease, background-color 180ms ease;
@@ -176,7 +175,11 @@ body{
   color:var(--fg);
 }
 
-/* Inline copy targets (result-inline and small copy button) and history link buttons */
+/* result-actions container (top-right of result) */
+.result-actions{position:absolute;top:10px;right:10px;display:flex;gap:8px;align-items:center}
+.result-actions .bar-btn{padding:6px 10px;font-size:0.85rem}
+
+/* Copy button styles (shared) */
 .result-copy-btn{
   display:inline-flex;
   align-items:center;
@@ -190,8 +193,6 @@ body{
   border-radius:6px;
   position:relative;
   transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, opacity 160ms ease, transform 160ms ease;
-  opacity: 0; /* hidden by default, revealed on hover/focus */
-  transform: translateY(2px);
 }
 .result-copy-btn:hover,
 .result-copy-btn:focus {
@@ -200,31 +201,19 @@ body{
   background: rgba(11,116,255,0.06);
 }
 
-/* Copy-icon visibility: hide SVGs inside link-copy buttons by default,
-   reveal on hover/focus and when the element has .copied or .copy-failed */
+/* Link button icon visibility */
 .bar-btn.link-copy svg { opacity: 0; transform: translateX(-4px); transition: opacity 160ms ease, transform 160ms ease; }
 .bar-btn.link-copy:hover svg,
 .bar-btn.link-copy:focus-visible svg,
 .bar-btn.link-copy.copied svg,
 .bar-btn.link-copy.copy-failed svg { opacity: 1; transform: translateX(0); }
 
-/* Make the inline result-copy button visible when the eq-row is hovered or when it is focused or in a copied state */
-.eq-row:hover .result-copy-btn,
-.result-copy-btn:focus-visible,
-.result-copy-btn.copied,
-.result-copy-btn.copy-failed { opacity: 1; transform: translateY(0); }
-
-/* Helper class for history link buttons (so they can share the same UX) */
-.bar-btn.link-copy {
-  position: relative;
-}
-
 /* Copied state: small badge (shared for inline value & buttons) */
 .result-inline.copied,
 .result-copy-btn.copied,
 .bar-btn.link-copy.copied { background: rgba(46,139,87,0.08); box-shadow: 0 10px 20px rgba(46,139,87,0.06); }
 .result-inline.copied::after,
-.result-copy-btn.copied::after,
+.result-copy-btn.copied,
 .bar-btn.link-copy.copied::after {
   content: "Copied";
   position: absolute;

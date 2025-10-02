@@ -7,6 +7,7 @@ const MAX_HISTORY = 30;
 const INPUTS_KEY = 'percently_inputs_v1'; // session persistence for inputs across panels
 
 let currentMode = 'of'; // 'of', 'inc', 'dec', 'what', 'diff'
+let lastComputedEntry = null; // store the previous calculation; history adds this, not the current
 
 // Tab buttons and panels
 const tabs = {
@@ -160,37 +161,11 @@ function showToast(msg, duration = 3000) {
   }, duration);
 }
 
-// Small inline SVG for copy icon (used for Link buttons and inline result copy)
-// NOTE: margin-left so the icon appears to the right of the label text.
+// Small inline SVG for copy icon (used for Link buttons)
 const LINK_ICON_SVG = `<svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-left:6px; fill:none; stroke:currentColor; stroke-width:2">` +
   `<rect x="9" y="9" width="10" height="10" rx="2"></rect>` +
   `<path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1"></path>` +
 `</svg>`;
-
-// Visual feedback on the copy/link button: temporarily change label, html and disable
-function showCopyButtonFeedback(btn, { label = 'Copied', duration = 2000 } = {}) {
-  if (!btn) return;
-  // store original html if not already stored
-  if (!btn.dataset.origHtml) btn.dataset.origHtml = btn.innerHTML;
-  if (!btn.dataset.origBg) btn.dataset.origBg = btn.style.background || '';
-  if (!btn.dataset.origColor) btn.dataset.origColor = btn.style.color || '';
-
-  // apply feedback state (keep icon + label)
-  // Place the icon to the right of the visible label
-  const visibleLabel = btn.dataset.origHtml ? btn.dataset.origHtml : '<span>Link</span>';
-  btn.innerHTML = `${visibleLabel}${LINK_ICON_SVG}<span style="vertical-align:middle; margin-left:8px;">${label}</span>`;
-  btn.disabled = true;
-  btn.style.background = '#2E8B57'; // success green
-  btn.style.color = '#fff';
-
-  // revert after timeout
-  setTimeout(() => {
-    btn.disabled = false;
-    btn.innerHTML = btn.dataset.origHtml || (`<span>Link</span>${LINK_ICON_SVG}`);
-    btn.style.background = btn.dataset.origBg || '';
-    btn.style.color = btn.dataset.origColor || '';
-  }, duration);
-}
 
 // Generic copy-to-clipboard with fallback; returns Promise<boolean>
 function copyTextToClipboard(text) {
@@ -234,10 +209,7 @@ function copyTextToClipboard(text) {
   });
 }
 
-// Shared inline copy feedback and helper (used by result value, small copy button, and history link buttons)
-// Important change: we no longer overwrite the visible result-msg area. Instead we announce via a
-// visually-hidden aria-live element (scoped to the result-container) or a global live region.
-// This prevents the explanatory text from being replaced/cleared.
+// Shared inline copy feedback and helper (announces via scoped aria-live)
 async function copyAndFlash(el, text, okMsg = 'Copied', failMsg = 'Copy failed', duration = 1400) {
   if (!el || !text) return false;
   const ok = await copyTextToClipboard(text);
@@ -287,7 +259,7 @@ async function copyAndFlash(el, text, okMsg = 'Copied', failMsg = 'Copy failed',
 }
 
 // Make an element a keyboard-accessible copy target that uses copyAndFlash
-function makeCopyTarget(el, getText) {
+function makeCopyTarget(el, getText, { okMsg = 'Copied', failMsg = 'Copy failed' } = {}) {
   if (!el) return;
   // If not a native button, make focusable
   if (el.tagName.toLowerCase() !== 'button' && !el.hasAttribute('tabindex')) {
@@ -298,14 +270,14 @@ function makeCopyTarget(el, getText) {
   el.addEventListener('click', async (e) => {
     e.preventDefault();
     const text = typeof getText === 'function' ? getText() : getText;
-    await copyAndFlash(el, text, 'Value copied to clipboard', 'Copy failed');
+    await copyAndFlash(el, text, okMsg, failMsg);
   });
 
   el.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       const text = typeof getText === 'function' ? getText() : getText;
-      await copyAndFlash(el, text, 'Value copied to clipboard', 'Copy failed');
+      await copyAndFlash(el, text, okMsg, failMsg);
     }
   });
 }
@@ -513,6 +485,8 @@ function loadFromURL() {
       if (!isNaN(result.r)) {
         // show result (do not add to history)
         showResult(panels[mode], result.htmlNumeric, result.htmlText, false);
+        // prime lastComputedEntry so the next manual submit will add this computed result to history
+        lastComputedEntry = { mode, params: readInputsFor(mode), text: result.htmlText, value: result.r };
       } else if (result.htmlText) {
         showResult(panels[mode], result.htmlNumeric, result.htmlText, false);
       }
@@ -582,7 +556,7 @@ function buildUrlForHistoryItem(item) {
 
 // History click handler (event delegation)
 // IMPORTANT: only buttons inside the history list trigger actions now.
-// Clicking the row text (history-item) will NOT trigger load — Load works only when its button is clicked.
+// Clicking the row text (history-item) will NOT trigger load — Load runs only when its button is clicked.
 $('history-list').addEventListener('click', async (e) => {
   const btn = e.target.closest('button');
   if (!btn) return; // ignore clicks that are not on a button
@@ -598,11 +572,9 @@ $('history-list').addEventListener('click', async (e) => {
     // Copy a permalink URL that recreates this calculation
     const url = buildUrlForHistoryItem(item);
     try {
-      // Use the unified inline feedback helper for consistency
       btn.classList.add('link-copy');
       await copyAndFlash(btn, url, 'Link copied to clipboard', url);
     } catch {
-      // fallback to showing the url in a toast if copy somehow fails
       showToast(url, 6000);
     }
   } else if (action === 'load') {
@@ -675,15 +647,17 @@ Object.keys(panels).forEach(mode => {
       // Show numeric result and explanatory text separately
       showResult(panel, result.htmlNumeric, result.htmlText);
       
-      // Add to history
+      // Add the previous calculation (if present) to history — do NOT add the current one immediately
+      if (lastComputedEntry) addHistoryEntry(lastComputedEntry);
+
+      // Update lastComputedEntry so it will be added on the next submission
       const inputs = readInputsFor(mode);
-      const entry = {
+      lastComputedEntry = {
         mode,
         params: inputs,
         text: result.htmlText,
         value: result.r
       };
-      addHistoryEntry(entry);
     } else if (result.htmlText) {
       // Show error (use htmlText as message and htmlNumeric for inline if provided)
       showResult(panel, result.htmlNumeric, result.htmlText);
@@ -730,34 +704,58 @@ Object.keys(panels).forEach(mode => {
     });
   });
 
-  // Wire inline copy targets for the large result area:
+  // Wire action buttons inside the result area (Link + Copy Value)
   const rc = panel.querySelector('.result-container');
   if (rc) {
     const inline = rc.querySelector('.result-inline');
-    const copyBtn = rc.querySelector('.result-copy-btn');
 
-    // Make the numeric value itself a copy target
-    if (inline) {
-      makeCopyTarget(inline, () => inline.textContent ? inline.textContent.trim() : '');
+    // create or reuse a result-actions container (absolute positioned)
+    let rcActions = rc.querySelector('.result-actions');
+    if (!rcActions) {
+      rcActions = document.createElement('div');
+      rcActions.className = 'result-actions';
+      rc.appendChild(rcActions);
     }
 
-    // Make the small copy-link button produce a permalink for this panel (auto=1)
-    if (copyBtn) {
-      // ensure the button contains the copy SVG so it can be revealed on hover
-      // place any visible label before the icon so the icon appears on the right
-      if (!copyBtn.innerHTML.trim()) copyBtn.innerHTML = `<span class="sr-only">Copy link for this calculation</span>${LINK_ICON_SVG}`;
-      copyBtn.setAttribute('title', 'Copy link for this calculation');
-      copyBtn.setAttribute('aria-label', 'Copy link for this calculation');
-
-      makeCopyTarget(copyBtn, () => {
-        const params = new URLSearchParams();
-        params.set('mode', mode);
-        const inputsNow = readInputsFor(mode);
-        Object.keys(inputsNow).forEach(k => { if (inputsNow[k]) params.set(k, inputsNow[k]); });
-        params.set('auto', '1');
-        return window.location.origin + window.location.pathname + '?' + params.toString();
-      });
+    // Link button (permalink for this result) — visible label + icon to the right
+    let linkBtn = rc.querySelector('.result-link-btn');
+    if (!linkBtn) {
+      linkBtn = document.createElement('button');
+      linkBtn.type = 'button';
+      linkBtn.className = 'bar-btn primary result-link-btn link-copy';
+      linkBtn.style.fontSize = '0.85rem';
+      linkBtn.title = 'Copy link for this calculation';
+      linkBtn.setAttribute('aria-label', 'Copy link for this calculation');
+      linkBtn.innerHTML = `<span>Link</span>${LINK_ICON_SVG}`;
+      rcActions.appendChild(linkBtn);
     }
+
+    makeCopyTarget(linkBtn, () => {
+      const params = new URLSearchParams();
+      params.set('mode', mode);
+      const inputsNow = readInputsFor(mode);
+      Object.keys(inputsNow).forEach(k => { if (inputsNow[k]) params.set(k, inputsNow[k]); });
+      params.set('auto', '1');
+      return window.location.origin + window.location.pathname + '?' + params.toString();
+    }, { okMsg: 'Link copied to clipboard', failMsg: 'Copy failed' });
+
+    // Copy value button (copies only the numeric value shown in the large display)
+    let valueBtn = rc.querySelector('.result-value-btn');
+    if (!valueBtn) {
+      valueBtn = document.createElement('button');
+      valueBtn.type = 'button';
+      valueBtn.className = 'bar-btn secondary result-value-btn';
+      valueBtn.style.fontSize = '0.85rem';
+      valueBtn.title = 'Copy result value';
+      valueBtn.setAttribute('aria-label', 'Copy result value');
+      valueBtn.innerHTML = `<span>Copy</span>`;
+      rcActions.appendChild(valueBtn);
+    }
+
+    makeCopyTarget(valueBtn, () => {
+      // copy only the visible numeric text (no explanatory text)
+      return inline && inline.textContent ? inline.textContent.trim() : '';
+    }, { okMsg: 'Value copied to clipboard', failMsg: 'Copy failed' });
   }
 });
 
