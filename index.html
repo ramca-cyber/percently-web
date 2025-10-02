@@ -14,64 +14,207 @@
   <main class="wrap compact">
     <header class="site-header compact-header">
       <h1 class="title">Percently</h1>
-      <p class="subtitle">Readable inputs and clear inline results — large inputs with immediate inline answer.</p>
+      <p class="subtitle">Submit-based percentage calculator with history.</p>
     </header>
 
     <section class="compact-card" aria-label="Calculator">
-      <form id="calc-form" class="compact-form" novalidate>
-        <!-- Mode title + subtitle -->
-        <div id="calc-mode" class="calc-mode" aria-live="polite">
-          <h2 id="calc-mode-title" class="calc-mode-title">X of Y</h2>
-          <p id="calc-mode-sub" class="calc-mode-sub">Enter inputs to compute quickly — result shown on the right.</p>
-        </div>
+      <!-- Tabs for different calculator modes -->
+      <div role="tablist" aria-label="Calculator modes" class="options-row boxed">
+        <button role="tab" aria-selected="true" aria-controls="panel-of" id="tab-of" class="option-card">X% of Y</button>
+        <button role="tab" aria-selected="false" aria-controls="panel-inc" id="tab-inc" class="option-card">Increase by %</button>
+        <button role="tab" aria-selected="false" aria-controls="panel-dec" id="tab-dec" class="option-card">Decrease by %</button>
+        <button role="tab" aria-selected="false" aria-controls="panel-what" id="tab-what" class="option-card">What % is X of Y</button>
+        <button role="tab" aria-selected="false" aria-controls="panel-diff" id="tab-diff" class="option-card">% change A→B</button>
+      </div>
 
-        <!-- Split rectangle: left = stacked inputs, right = result with title -->
-        <div class="split-rect" role="group" aria-label="Inputs and result">
-          <div class="left-col" role="region" aria-label="Inputs">
-            <div class="input-wrap">
-              <div class="input-caption" id="label-x-text">Input X</div>
-              <label class="big-input big-input-top">
-                <input id="input-x" name="x" type="text" inputmode="decimal" placeholder="50" aria-label="X">
-              </label>
+      <!-- Panel: X% of Y -->
+      <div id="panel-of" role="tabpanel" aria-labelledby="tab-of" class="tab-panel">
+        <form class="compact-form" novalidate>
+          <div class="calc-mode">
+            <h2 class="calc-mode-title">X% of Y</h2>
+            <p class="calc-mode-sub">Calculate X percent of Y.</p>
+          </div>
+          <div class="split-rect">
+            <div class="left-col">
+              <div class="input-wrap">
+                <label for="of-x" class="input-caption">X (percent)</label>
+                <input id="of-x" type="text" inputmode="decimal" placeholder="50" class="big-input">
+              </div>
+              <div class="input-wrap">
+                <label for="of-y" class="input-caption">Y (value)</label>
+                <input id="of-y" type="text" inputmode="decimal" placeholder="200" class="big-input">
+              </div>
             </div>
-            <div class="input-wrap">
-              <div class="input-caption" id="label-y-text">Input Y</div>
-              <label class="big-input big-input-bottom">
-                <input id="input-y" name="y" type="text" inputmode="decimal" placeholder="200" aria-label="Y">
-              </label>
+            <div class="right-col">
+              <div class="input-caption">Result</div>
+              <div class="result-container" style="display:none;">
+                <div class="eq-row">
+                  <div class="equals">=</div>
+                  <div class="result-inline" aria-live="polite"></div>
+                </div>
+                <div class="result-msg" aria-live="polite"></div>
+              </div>
             </div>
           </div>
-          <div class="right-col" role="region" aria-label="Result">
-            <div class="input-caption" id="label-result-text">Result</div>
-            <div class="eq-row" aria-hidden="true">
-              <div class="equals" id="equals">=</div>
-              <div id="result" class="result-inline" aria-live="polite" title=""></div>
-            </div>
-            <div id="result-msg" class="result-msg" aria-live="polite"></div>
+          <div class="actions-below">
+            <button type="submit" class="bar-btn primary">Calculate</button>
+            <button type="button" class="bar-btn secondary clear-btn">Clear</button>
           </div>
-        </div>
+        </form>
+      </div>
 
-        <!-- Actions (below the main rectangle) - centered -->
-        <div class="actions-below">
-          <button type="submit" id="calculate" class="bar-btn primary" aria-label="Calculate">Calculate</button>
-          <button type="button" id="clear" class="bar-btn secondary" aria-label="Clear">Clear</button>
-        </div>
+      <!-- Panel: Increase by % -->
+      <div id="panel-inc" role="tabpanel" aria-labelledby="tab-inc" class="tab-panel" style="display:none;">
+        <form class="compact-form" novalidate>
+          <div class="calc-mode">
+            <h2 class="calc-mode-title">Increase by %</h2>
+            <p class="calc-mode-sub">Increase Y by X percent.</p>
+          </div>
+          <div class="split-rect">
+            <div class="left-col">
+              <div class="input-wrap">
+                <label for="inc-x" class="input-caption">X (percent increase)</label>
+                <input id="inc-x" type="text" inputmode="decimal" placeholder="10" class="big-input">
+              </div>
+              <div class="input-wrap">
+                <label for="inc-y" class="input-caption">Y (base value)</label>
+                <input id="inc-y" type="text" inputmode="decimal" placeholder="200" class="big-input">
+              </div>
+            </div>
+            <div class="right-col">
+              <div class="input-caption">Result</div>
+              <div class="result-container" style="display:none;">
+                <div class="eq-row">
+                  <div class="equals">=</div>
+                  <div class="result-inline" aria-live="polite"></div>
+                </div>
+                <div class="result-msg" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+          <div class="actions-below">
+            <button type="submit" class="bar-btn primary">Calculate</button>
+            <button type="button" class="bar-btn secondary clear-btn">Clear</button>
+          </div>
+        </form>
+      </div>
 
-        <!-- Calculation options inside the same card (boxed row) - centered -->
-        <fieldset class="options-row boxed" role="radiogroup" aria-label="Select calculation" id="options-row">
-          <legend class="sr-only">Calculation type</legend>
-          <input type="radio" id="opt-percent-of" name="calc" value="percent-of" checked>
-          <label for="opt-percent-of" class="option-card">X of Y</label>
-          <input type="radio" id="opt-increase-by" name="calc" value="increase-by">
-          <label for="opt-increase-by" class="option-card">Increase Y by X</label>
-          <input type="radio" id="opt-decrease-by" name="calc" value="decrease-by">
-          <label for="opt-decrease-by" class="option-card">Decrease Y by X</label>
-          <input type="radio" id="opt-percent-diff" name="calc" value="percent-diff">
-          <label for="opt-percent-diff" class="option-card">Percent difference</label>
-          <input type="radio" id="opt-what-percent" name="calc" value="what-percent">
-          <label for="opt-what-percent" class="option-card">What percent is X of Y</label>
-        </fieldset>
-      </form>
+      <!-- Panel: Decrease by % -->
+      <div id="panel-dec" role="tabpanel" aria-labelledby="tab-dec" class="tab-panel" style="display:none;">
+        <form class="compact-form" novalidate>
+          <div class="calc-mode">
+            <h2 class="calc-mode-title">Decrease by %</h2>
+            <p class="calc-mode-sub">Decrease Y by X percent.</p>
+          </div>
+          <div class="split-rect">
+            <div class="left-col">
+              <div class="input-wrap">
+                <label for="dec-x" class="input-caption">X (percent decrease)</label>
+                <input id="dec-x" type="text" inputmode="decimal" placeholder="10" class="big-input">
+              </div>
+              <div class="input-wrap">
+                <label for="dec-y" class="input-caption">Y (base value)</label>
+                <input id="dec-y" type="text" inputmode="decimal" placeholder="200" class="big-input">
+              </div>
+            </div>
+            <div class="right-col">
+              <div class="input-caption">Result</div>
+              <div class="result-container" style="display:none;">
+                <div class="eq-row">
+                  <div class="equals">=</div>
+                  <div class="result-inline" aria-live="polite"></div>
+                </div>
+                <div class="result-msg" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+          <div class="actions-below">
+            <button type="submit" class="bar-btn primary">Calculate</button>
+            <button type="button" class="bar-btn secondary clear-btn">Clear</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Panel: What % is X of Y -->
+      <div id="panel-what" role="tabpanel" aria-labelledby="tab-what" class="tab-panel" style="display:none;">
+        <form class="compact-form" novalidate>
+          <div class="calc-mode">
+            <h2 class="calc-mode-title">What % is X of Y</h2>
+            <p class="calc-mode-sub">Find what percent X is of Y.</p>
+          </div>
+          <div class="split-rect">
+            <div class="left-col">
+              <div class="input-wrap">
+                <label for="what-a" class="input-caption">A (part)</label>
+                <input id="what-a" type="text" inputmode="decimal" placeholder="25" class="big-input">
+              </div>
+              <div class="input-wrap">
+                <label for="what-b" class="input-caption">B (whole)</label>
+                <input id="what-b" type="text" inputmode="decimal" placeholder="200" class="big-input">
+              </div>
+            </div>
+            <div class="right-col">
+              <div class="input-caption">Result</div>
+              <div class="result-container" style="display:none;">
+                <div class="eq-row">
+                  <div class="equals">=</div>
+                  <div class="result-inline" aria-live="polite"></div>
+                </div>
+                <div class="result-msg" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+          <div class="actions-below">
+            <button type="submit" class="bar-btn primary">Calculate</button>
+            <button type="button" class="bar-btn secondary clear-btn">Clear</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Panel: % change A→B (NEW) -->
+      <div id="panel-diff" role="tabpanel" aria-labelledby="tab-diff" class="tab-panel" style="display:none;">
+        <form class="compact-form" novalidate>
+          <div class="calc-mode">
+            <h2 class="calc-mode-title">% change A→B</h2>
+            <p class="calc-mode-sub">Calculate directional percent change from old to new.</p>
+          </div>
+          <div class="split-rect">
+            <div class="left-col">
+              <div class="input-wrap">
+                <label for="diff-old" class="input-caption">Old (A)</label>
+                <input id="diff-old" type="text" inputmode="decimal" placeholder="100" class="big-input">
+              </div>
+              <div class="input-wrap">
+                <label for="diff-new" class="input-caption">New (B)</label>
+                <input id="diff-new" type="text" inputmode="decimal" placeholder="120" class="big-input">
+              </div>
+            </div>
+            <div class="right-col">
+              <div class="input-caption">Result</div>
+              <div class="result-container" style="display:none;">
+                <div class="eq-row">
+                  <div class="equals">=</div>
+                  <div class="result-inline" aria-live="polite"></div>
+                </div>
+                <div class="result-msg" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+          <div class="actions-below">
+            <button type="submit" class="bar-btn primary">Calculate</button>
+            <button type="button" class="bar-btn secondary clear-btn">Clear</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- History Section -->
+    <section class="compact-card" aria-label="History">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h2 style="margin:0; font-size:1.25rem;">History</h2>
+        <button id="clear-history" class="bar-btn secondary" style="padding:0.25rem 0.75rem; font-size:0.875rem;">Clear</button>
+      </div>
+      <div id="history-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
     </section>
 
     <footer class="site-footer compact-footer">
@@ -79,57 +222,9 @@
     </footer>
   </main>
   <script type="module" src="main.js"></script>
-  <script>
-    // Enforce two-decimal display on #result without changing main.js
-    (function(){
-      const resultEl = document.getElementById('result');
-      if (!resultEl) return;
-
-      function formatAndSet(text) {
-        // If text already contains a percent sign, handle separately
-        const hasPercent = /%\s*$/.test(text);
-        const cleaned = String(text).replace(/[^0-9+\-eE.,%]/g, '').replace(/%/g, '').trim();
-        // Try to parse using the same normalization heuristic (comma/dot)
-        let val = NaN;
-        if (cleaned !== '') {
-          // Prefer parseFloat on normalized string: convert comma decimal to dot when appropriate
-          const lastComma = cleaned.lastIndexOf(',');
-          const lastDot = cleaned.lastIndexOf('.');
-          if (lastComma !== -1 && lastDot !== -1 && lastComma > lastDot) {
-            val = Number(cleaned.replace(/\./g,'').replace(/,([^,]*)$/, '.$1'));
-          } else {
-            val = Number(cleaned.replace(/,/g, ''));
-          }
-        }
-
-        let newText;
-        if (typeof val === 'number' && isFinite(val)) {
-          const out = val.toFixed(2);
-          newText = hasPercent ? out + '%' : out;
-        } else {
-          // leave non-numeric text unchanged
-          newText = text;
-        }
-        
-        // Only update if the text actually changed to prevent infinite loop
-        if (resultEl.textContent !== newText) {
-          resultEl.textContent = newText;
-        }
-      }
-
-      const mo = new MutationObserver(muts => {
-        for (const m of muts) {
-          if (m.type === 'childList') {
-            const newText = resultEl.textContent;
-            if (newText && newText.length) formatAndSet(newText);
-          }
-        }
-      });
-      mo.observe(resultEl, { childList: true, characterData: true, subtree: true });
-
-      // Also format initial content if any
-      if (resultEl.textContent && resultEl.textContent.trim()) formatAndSet(resultEl.textContent.trim());
-    })();
-  </script>
+  <!-- Recommended CSP for future deploys:
+    Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
+    base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none';
+  -->
 </body>
 </html>

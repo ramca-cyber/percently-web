@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { percentOf, increaseBy, decreaseBy, percentDifference, whatPercent } from '../calc.js';
+import { percentOf, increaseBy, decreaseBy, percentDifference, whatPercent, percentChange } from '../calc.js';
 
 describe('calc functions', () => {
   it('percentOf works', () => {
@@ -20,5 +20,17 @@ describe('calc functions', () => {
 
   it('whatPercent works', () => {
     expect(whatPercent(25, 200)).toBeCloseTo(12.5);
+  });
+
+  it('percentChange works for increase', () => {
+    expect(percentChange(100, 120)).toBeCloseTo(20);
+  });
+
+  it('percentChange works for decrease', () => {
+    expect(percentChange(200, 150)).toBeCloseTo(-25);
+  });
+
+  it('percentChange throws for zero old value', () => {
+    expect(() => percentChange(0, 50)).toThrow('Old value cannot be zero');
   });
 });
