@@ -310,9 +310,10 @@ function clearResult(panelEl) {
     if (resultInline) resultInline.innerHTML = '';
     if (resultMsg) resultMsg.textContent = '';
   }
-  // Hide secondary actions (preserve Calculate button visibility)
+  // Ensure actions container is not using the global .hidden rule which hides all children.
   const actions = panelEl.querySelector('.actions-below');
   if (actions) {
+    actions.classList.remove('hidden'); // remove the container-hidden class so primary can be visible
     const primary = actions.querySelector('.bar-btn.primary');
     const others = Array.from(actions.querySelectorAll('button')).filter(b => b !== primary);
     others.forEach(b => b.style.display = 'none');
@@ -343,10 +344,12 @@ function showResult(panelEl, htmlNumeric, htmlText, showSecondary = true) {
   // Show or hide the secondary action buttons (e.g., Clear). Keep primary Calculate visible always.
   const actions = panelEl.querySelector('.actions-below');
   if (actions) {
+    // remove the container-hidden class so children are not suppressed by CSS rule
+    actions.classList.remove('hidden');
     const primary = actions.querySelector('.bar-btn.primary');
     const others = Array.from(actions.querySelectorAll('button')).filter(b => b !== primary);
     if (showSecondary) {
-      others.forEach(b => b.style.display = '');
+      others.forEach(b => b.style.display = ''; 
     } else {
       others.forEach(b => b.style.display = 'none');
     }
@@ -581,6 +584,7 @@ Object.keys(panels).forEach(mode => {
   // Ensure Calculate button is visible at start (primary)
   const actionsInit = panel.querySelector('.actions-below');
   if (actionsInit) {
+    actionsInit.classList.remove('hidden'); // ensure container not globally hidden
     const primaryInit = actionsInit.querySelector('.bar-btn.primary');
     if (primaryInit) primaryInit.style.display = '';
     const othersInit = Array.from(actionsInit.querySelectorAll('button')).filter(b => b !== primaryInit);
