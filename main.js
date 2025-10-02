@@ -300,7 +300,7 @@ function computeNow(mode) {
   return { r, htmlNumeric, htmlText, text };
 }
 
-// Clear result container for a panel (also hide actions area)
+// Clear result container for a panel (hide secondary actions but keep Calculate visible)
 function clearResult(panelEl) {
   const resultContainer = panelEl.querySelector('.result-container');
   if (resultContainer) {
@@ -310,12 +310,18 @@ function clearResult(panelEl) {
     if (resultInline) resultInline.innerHTML = '';
     if (resultMsg) resultMsg.textContent = '';
   }
+  // Hide secondary actions (preserve Calculate button visibility)
   const actions = panelEl.querySelector('.actions-below');
-  if (actions) actions.classList.add('hidden');
+  if (actions) {
+    const primary = actions.querySelector('.bar-btn.primary');
+    const others = Array.from(actions.querySelectorAll('button')).filter(b => b !== primary);
+    others.forEach(b => b.style.display = 'none');
+    if (primary) primary.style.display = '';
+  }
 }
 
-// Show result in a panel and optionally reveal the action bar
-function showResult(panelEl, htmlNumeric, htmlText, showActions = true) {
+// Show result in a panel and optionally reveal the secondary action buttons (Calculate stays visible)
+function showResult(panelEl, htmlNumeric, htmlText, showSecondary = true) {
   const rc = panelEl.querySelector('.result-container');
   if (!rc) return;
   const inline = rc.querySelector('.result-inline');
@@ -334,11 +340,17 @@ function showResult(panelEl, htmlNumeric, htmlText, showActions = true) {
     msg.innerHTML = htmlText || '';
   }
 
-  // Show or hide the action bar (Calculate/Clear)
+  // Show or hide the secondary action buttons (e.g., Clear). Keep primary Calculate visible always.
   const actions = panelEl.querySelector('.actions-below');
   if (actions) {
-    if (showActions) actions.classList.remove('hidden');
-    else actions.classList.add('hidden');
+    const primary = actions.querySelector('.bar-btn.primary');
+    const others = Array.from(actions.querySelectorAll('button')).filter(b => b !== primary);
+    if (showSecondary) {
+      others.forEach(b => b.style.display = '');
+    } else {
+      others.forEach(b => b.style.display = 'none');
+    }
+    if (primary) primary.style.display = '';
   }
 
   // aria-live areas on the DOM will announce as appropriate
@@ -384,10 +396,11 @@ function updateURL() {
   window.history.replaceState({}, '', newUrl);
 }
 
-// Load from URL
+// Load from URL (now supports auto=1)
 function loadFromURL() {
   const params = new URLSearchParams(window.location.search);
   const mode = params.get('mode');
+  const auto = params.get('auto') === '1';
   
   if (mode && panels[mode]) {
     selectTab(mode, true);
@@ -418,6 +431,17 @@ function loadFromURL() {
     if (f0) syncInputFrom('of-x', f0);
     const s0 = $('of-y') ? $('of-y').value : '';
     if (s0) syncInputFrom('of-y', s0);
+
+    // If auto=1, compute now and show the result (but do not add to history).
+    if (auto) {
+      const result = computeNow(mode);
+      if (!isNaN(result.r)) {
+        // show result but keep secondary actions hidden (per spec do not add to history)
+        showResult(panels[mode], result.htmlNumeric, result.htmlText, false);
+      } else if (result.htmlText) {
+        showResult(panels[mode], result.htmlNumeric, result.htmlText, false);
+      }
+    }
   }
 }
 
@@ -474,6 +498,8 @@ function buildUrlForHistoryItem(item) {
   Object.keys(p).forEach(k => {
     if (p[k]) params.set(k, p[k]);
   });
+  // include auto=1 so the link will auto-calc
+  params.set('auto', '1');
   return window.location.origin + window.location.pathname + '?' + params.toString();
 }
 
@@ -552,6 +578,15 @@ Object.keys(panels).forEach(mode => {
   const panel = panels[mode];
   const form = panel.querySelector('form');
   
+  // Ensure Calculate button is visible at start (primary)
+  const actionsInit = panel.querySelector('.actions-below');
+  if (actionsInit) {
+    const primaryInit = actionsInit.querySelector('.bar-btn.primary');
+    if (primaryInit) primaryInit.style.display = '';
+    const othersInit = Array.from(actionsInit.querySelectorAll('button')).filter(b => b !== primaryInit);
+    othersInit.forEach(b => b.style.display = 'none');
+  }
+
   // Submit handler
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -559,7 +594,7 @@ Object.keys(panels).forEach(mode => {
     
     if (!isNaN(result.r)) {
       // Show numeric result and explanatory text separately
-      // show actions because this is a successful calculation
+      // show secondary actions because this is a successful calculation
       showResult(panel, result.htmlNumeric, result.htmlText, true);
       
       // Add to history
@@ -573,7 +608,7 @@ Object.keys(panels).forEach(mode => {
       addHistoryEntry(entry);
     } else if (result.htmlText) {
       // Show error (use htmlText as message and htmlNumeric for inline if provided)
-      // do not reveal action bar for errors
+      // do not reveal secondary actions for errors
       showResult(panel, result.htmlNumeric, result.htmlText, false);
     }
   });
