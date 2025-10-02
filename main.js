@@ -312,7 +312,7 @@ function computeNow(mode) {
       try {
         r = calc.whatPercent(a, b);
         htmlNumeric = `<strong>${N(r)}%</strong>`;
-        htmlText = `${N(a)} is ${N(r)}% of ${N(b)}`;
+        htmlText = `${N(a)} is <strong>${N(r)}%</strong> of ${N(b)}`;
         text = `${a} is ${r}% of ${b}`;
       } catch (err) {
         htmlNumeric = `<span style="color:var(--danger);">${err.message}</span>`;
