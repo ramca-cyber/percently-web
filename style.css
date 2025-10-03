@@ -1,10 +1,24 @@
 :root{
+  /* Palette + tokens */
   --bg: #ffffff;
+  --bg-panel: #ffffff;
   --bg-secondary: #f7f9fb;
+  --bg-soft: #f6f9fb;
   --muted: #6b7a86;
+  --muted-color: #536072;
   --fg: #06243a;
-  --accent: #0b74ff;
+  --accent: #0b74ff; /* primary accent (kept blue for continuity) */
+  --accent-600: #0a63d6;
   --danger: #e03e3e;
+
+  /* Layout spacing scale */
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
   --card-radius: 10px;
   --card-padding: 12px;
   --result-font-size: 56px;
@@ -13,6 +27,9 @@
   --border: 1px solid rgba(13,30,57,0.06);
   --selected-bg-start: #eaf4ff;
   --selected-bg-end: #dbefff;
+
+  /* Typography */
+  --font-ui: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 
 /* Reset / base */
@@ -20,17 +37,19 @@
 html,body{height:100%}
 body{
   margin:0;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  font-family: var(--font-ui);
   color:var(--fg);
   background:linear-gradient(180deg,#fbfdff,#f7fbff);
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
-  line-height:1.35;
-  padding:16px;
+  line-height:1.45;
+  font-size:16px;
+  padding:var(--space-lg);
 }
 
 /* Layout helpers */
 .wrap{max-width:980px;margin:0 auto}
+.container{max-width:880px;margin-left:auto;margin-right:auto;padding:var(--space-lg)}
 .compact{padding:6px}
 .compact-card{
   background:var(--bg);
@@ -40,10 +59,23 @@ body{
   border:var(--border);
 }
 
+/* Generic panel/card used for calculator panels */
+.panel{
+  background:var(--bg-panel);
+  border-radius:var(--card-radius);
+  padding:var(--space-md);
+  box-shadow: 0 10px 30px rgba(11,20,30,0.06);
+  border: 1px solid rgba(11,20,30,0.04);
+  margin-bottom: var(--space-lg);
+}
+
 /* Header */
-.site-header{margin-bottom:10px}
-.title{margin:0;font-size:18px;font-weight:600}
+.site-header{margin-bottom:10px; text-align:center}
+.title{margin:0; font-size:24px; font-weight:700}
 .subtitle{margin:4px 0 0;color:var(--muted);font-size:12px}
+
+/* Ensure calculation panel titles and the page title share the same scale */
+.calc-mode-title{margin:0; font-size:24px; font-weight:700}
 
 /* Options row (tabs / radio-like cards) */
 .options-row{display:flex;gap:8px;flex-wrap:wrap}
@@ -74,8 +106,8 @@ body{
   display:grid;
   /* Make left (inputs) and right (result) share space evenly while keeping a sensible minimum width */
   grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
-  gap:10px;
-  margin-top:10px;
+  gap:16px;
+  margin-top:12px;
   align-items:stretch;
 }
 
@@ -105,7 +137,7 @@ body{
 .right-col{padding:12px;border-left:1px solid rgba(13,30,57,0.03);display:flex;flex-direction:column;align-items:stretch;justify-content:center}
 .input-caption{font-weight:600}
 .result-container{
-  background: linear-gradient(180deg,#f6fbff,#eef7ff);
+  background: linear-gradient(180deg,var(--bg-soft),#eef7ff);
   border-radius:10px;
   padding:12px;
   min-height:140px;
@@ -118,6 +150,31 @@ body{
   --result-inline-size: clamp(16px, 5vw, var(--result-font-size));
   box-shadow: 0 6px 18px rgba(11,116,255,0.04) inset;
   width:100%;
+  /* entry/exit transitions for smoother reveal */
+  opacity: 0;
+  transform: translateY(-6px) scale(0.996);
+  transition: opacity 220ms ease, transform 220ms cubic-bezier(.2,.9,.3,1);
+}
+/* Reveal state when JS adds .shown */
+.result-container.shown {
+  opacity: 1 !important;
+  transform: translateY(0) scale(1) !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* When container is copyable (or shown), surface the inline copy badge so users
+   can copy the value without needing to hover the container. */
+.result-container.copyable .result-inline-copy,
+.result-container.shown .result-inline-copy {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Force the numeric value to be visible when the container is shown */
+.result-container.shown .result-value {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 .eq-row{ display:grid; grid-template-columns: auto 1fr; align-items:center; gap:8px; width:100%; padding-left:6px }
 .equals{font-size:18px;color:#0b2f48;font-weight:700}
@@ -198,6 +255,58 @@ body{
   color:var(--fg);
 }
 
+/* Improved button styles and accessibility */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 140ms cubic-bezier(.2,.9,.3,1), box-shadow 140ms ease, background-color 140ms ease;
+}
+.button:active { transform: translateY(0.5px); }
+.button:focus { outline: none; }
+
+/* Primary/secondary variants that map to existing classes */
+.button.primary, .bar-btn.primary { background: linear-gradient(180deg,var(--accent),var(--accent-600)); color: #fff; }
+.button.secondary, .bar-btn.secondary { background: transparent; border: 1px solid rgba(11,20,30,0.06); color: var(--fg); }
+
+/* Focus-visible for keyboard users */
+:focus-visible { outline: 3px solid rgba(11,116,255,0.12); outline-offset: 2px; border-radius: 8px; }
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* Micro-interactions: subtle lift on hover for primary buttons */
+.button.primary:hover, .bar-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(11,116,255,0.08); }
+
+/* Pressed / active feedback for all interactive controls (click/tap/keyboard)
+  We use a short transition and a pressed class applied by JS for robust
+  feedback even when default :active is suppressed by JS event.preventDefault(). */
+.pressed { transform: translateY(1px) scale(0.996) !important; opacity: 0.98; }
+
+/* Buttons get a darker background when pressed for clarity */
+.bar-btn.pressed, .button.pressed { box-shadow: 0 6px 14px rgba(11,116,255,0.06) !important; }
+.bar-btn.primary.pressed { background: #0957c2 !important; }
+.bar-btn.secondary.pressed { background: rgba(11,116,255,0.06) !important; }
+
+/* Inline copy badge and result container pressed state */
+.result-inline-copy.pressed { transform: translateY(-50%) translateY(-1px) scale(0.98); background: rgba(11,116,255,0.06); }
+.result-container.pressed { box-shadow: 0 6px 22px rgba(11,116,255,0.06) inset; transform: translateY(0) scale(0.998); }
+
+/* make press transitions quick and snappy */
+.bar-btn, .button, .result-inline-copy, .result-container, .result-inline { transition: transform 90ms ease, box-shadow 90ms ease, background-color 90ms ease; }
+
+/* Toast / copied badge tweak: softer color and larger font for clarity */
+.result-inline.copied::after,
+.result-copy-btn.copied,
+.bar-btn.link-copy.copied { box-shadow: 0 8px 18px rgba(46,139,87,0.12); font-weight:700 }
+
 /* Hover and focus styles for action buttons (Calculate, Clear, Load, Link) */
 .bar-btn:hover,
 .bar-btn:focus {
@@ -234,6 +343,10 @@ body{
   box-shadow: 0 10px 20px rgba(11,116,255,0.06);
 }
 
+/* Anchor the copied badge (::after) to the button so it doesn't position
+   relative to the viewport when multiple copies are triggered quickly. */
+.bar-btn.link-copy { position: relative; }
+
 /* result-actions container (center-right of result, vertical stack) */
 .result-actions{position:absolute;bottom:12px;right:12px;top:auto;transform:none;display:flex;gap:8px;align-items:center;flex-direction:row}
 .result-actions .bar-btn{padding:6px 10px;font-size:0.85rem}
@@ -248,8 +361,7 @@ body{
 
 .result-container .result-inline-copy {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 12px;
   right: 12px;
   display:inline-flex;
   align-items:center;
@@ -274,8 +386,8 @@ body{
 .result-inline .result-inline-copy:hover {
   opacity: 1;
   background: rgba(11,116,255,0.06);
-  /* maintain vertical centering while lifting slightly */
-  transform: translateY(-50%) translateY(-2px) scale(1.02);
+  /* slight lift on hover */
+  transform: translateY(-2px) scale(1.02);
 }
 .result-inline-copy.copied { background: rgba(46,139,87,0.08); }
 .result-inline-copy.copy-failed { background: rgba(224,62,62,0.08); }
@@ -283,30 +395,35 @@ body{
 .result-inline-copy:focus { outline: none; box-shadow: 0 10px 20px rgba(11,116,255,0.06); }
 
 /* Make the inline copy badge respond when the user hovers anywhere over the blue result container */
-.result-container:hover .result-inline-copy,
-.result-container:focus-within .result-inline-copy {
-  /* reveal copy badge on hover of the blue area or when keyboard focus enters it */
-  opacity: 1;
-  pointer-events: auto;
-  background: rgba(11,116,255,0.06);
-  transform: translateY(-50%) translateY(-2px) scale(1.02);
+.result-container .result-inline-copy {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size: calc(var(--result-inline-size) * 0.85);
+  line-height: 1;
+  width: calc(var(--result-inline-size) * 0.9);
+  height: calc(var(--result-inline-size) * 0.9);
+  padding: 0.12em;
+  border-radius: 0.35em;
+  color: var(--result-color);
+  background: transparent;
+  transition: opacity 160ms ease, transform 160ms ease, background-color 160ms ease;
+  cursor: pointer;
+  /* hidden by default so it doesn't compete visually with the large number */
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+  border: none; /* remove default button border that can appear as a black outline */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
-
-/* When a result is present, make the whole blue segment act as a copy target */
-.result-container.copyable { cursor: pointer; }
-.result-container.copyable:hover { background: linear-gradient(180deg,#f4fbff,#eaf6ff); }
-.result-container.copyable:active { transform: translateY(0.5px); }
-.result-container.copyable:focus { outline: none; box-shadow: 0 10px 20px rgba(11,116,255,0.06); }
-
-/* Ensure the inline copy badge is revealed when the container is copyable (even if pointer is not directly over the small button) */
-.result-container.copyable .result-inline-copy { opacity: 1; pointer-events: auto; }
-
-/* Ensure copy triggers contain the absolute-positioned badge */
-.result-copy-btn,
-.bar-btn.link-copy { position: relative; }
-
-.result-inline.copied::after,
-.result-copy-btn.copied::after,
+.result-container .result-inline-copy::-moz-focus-inner { border: 0; }
+.result-container .result-inline-copy:focus { outline: none; }
+.result-inline-copy svg { width: 1em; height: 1em; stroke: currentColor; display:block; }
 .bar-btn.link-copy.copied::after,
 .result-inline-copy.copied::after {
   content: "Copied";
@@ -344,6 +461,18 @@ body{
 /* Make result-inline and copy button visually accessible when copied (subtle bg) */
 .result-inline.copy-failed { background: rgba(224,62,62,0.06); box-shadow: 0 8px 16px rgba(224,62,62,0.06); }
 .result-inline.copy-failed::after { content: "Copy failed"; }
+
+/* Avoid using ::after badges for copy feedback on link buttons and inline copy
+   controls because pseudo-elements can be positioned relative to unexpected
+   ancestors during rapid DOM changes. Rely on the centralized toast instead. */
+.bar-btn.link-copy.copied::after,
+.result-inline-copy.copied::after,
+.result-copy-btn.copied::after,
+.bar-btn.link-copy.copy-failed::after,
+.result-inline-copy.copy-failed::after {
+  display: none !important;
+  content: none !important;
+}
 
 /* History */
 .history{margin-top:8px;display:flex;flex-direction:column;gap:8px}
@@ -474,5 +603,5 @@ body{
   opacity: 1;
   pointer-events: auto;
   background: rgba(11,116,255,0.06);
-  transform: translateY(-50%) translateY(-2px) scale(1.02);
+  transform: translateY(-2px) scale(1.02);
 }

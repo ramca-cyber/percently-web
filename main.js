@@ -133,17 +133,44 @@ function loadAllInputs() {
 }
 
 // showToast: use centralized CSS (style.css) rather than injecting styles
+// Centralized toast: reuse a single element so rapid triggers don't spawn many
+// nodes and positioning remains stable (fixes off-screen popups on fast clicks).
 function showToast(msg, duration = 3000) {
-  const t = document.createElement('div');
-  t.className = 'percently-toast';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  // trigger transition
-  requestAnimationFrame(() => t.classList.add('show'));
-  setTimeout(() => {
+  try {
+    const ID = 'percently-toast-global';
+    let t = document.getElementById(ID);
+
+    // Create once and reuse
+    if (!t) {
+      t = document.createElement('div');
+      t.id = ID;
+      t.className = 'percently-toast';
+      t.style.pointerEvents = 'auto';
+      document.body.appendChild(t);
+    }
+
+    // Clear any previous hide timer so repeated calls extend the visible period
+    if (t._hideTimeout) { clearTimeout(t._hideTimeout); t._hideTimeout = null; }
+
+    // Update text and ensure it's visible
+    t.textContent = msg;
+    // Force reflow then add class to start transition from hidden -> visible
     t.classList.remove('show');
-    t.addEventListener('transitionend', () => t.remove(), { once: true });
-  }, duration);
+    // Use RAF to ensure the removal is applied before adding back
+    requestAnimationFrame(() => t.classList.add('show'));
+
+    // Schedule hide
+    t._hideTimeout = setTimeout(() => {
+      t.classList.remove('show');
+      // Remove on transition end to keep DOM clean
+      const onEnd = () => { t.removeEventListener('transitionend', onEnd); /* keep element for reuse, do not remove */ };
+      t.addEventListener('transitionend', onEnd);
+      t._hideTimeout = null;
+    }, duration);
+  } catch (err) {
+    // If anything fails, ignore - toast is non-critical
+    try { console.warn('showToast failed', err); } catch (e) {}
+  }
 }
 
 // Centralized icon strings (imported)
@@ -361,6 +388,10 @@ function createResultControls(panelEl) {
   if (!valueEl) {
     valueEl = document.createElement('span');
     valueEl.className = 'result-value';
+    // allow keyboard focus directly on the large numeric result so users can
+    // focus it and use keyboard shortcuts like Ctrl/Cmd+C to copy the value
+    valueEl.setAttribute('tabindex', '0');
+    valueEl.setAttribute('aria-label', 'Result value');
     if (inline) inline.insertBefore(valueEl, inline.firstChild); else rc.appendChild(valueEl);
   }
 
@@ -432,11 +463,39 @@ function createResultControls(panelEl) {
 
     rc.addEventListener('click', containerHandler);
     rc.addEventListener('keydown', (ev) => {
+      // Enter/Space trigger copy for keyboard users
       if (ev.key === 'Enter' || ev.key === ' ') {
         ev.preventDefault();
         containerHandler(ev);
+        return;
+      }
+      // Ctrl/Cmd + C should copy the value when focus is on the container
+      if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'c' || ev.key === 'C')) {
+        ev.preventDefault();
+        containerHandler(ev);
+        return;
       }
     });
+
+    // If the numeric value element itself receives focus, allow Ctrl/Cmd+C
+    // and Enter/Space to copy as well. This covers cases where the user tabs
+    // directly to the number.
+    const valueElLocal = valueEl;
+    if (valueElLocal) {
+      valueElLocal.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          // prefer using inline copy button for visual feedback
+          containerHandler(ev);
+          return;
+        }
+        if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'c' || ev.key === 'C')) {
+          ev.preventDefault();
+          containerHandler(ev);
+          return;
+        }
+      });
+    }
 
     rc.dataset.copyContainerWired = '1';
   }
@@ -446,8 +505,17 @@ function createResultControls(panelEl) {
 function clearResult(panelEl) {
   const resultContainer = panelEl.querySelector('.result-container');
   if (resultContainer) {
-    resultContainer.style.display = 'none';
+    // animate hiding by removing the visible class and waiting for transition end
+    resultContainer.classList.remove('shown');
     resultContainer.classList.remove('copyable');
+    const hideAfter = () => { resultContainer.style.display = 'none'; resultContainer.removeEventListener('transitionend', hideAfter); };
+    // If no transition is present, hide immediately
+    const cs = getComputedStyle(resultContainer);
+    if (!cs.transitionDuration || cs.transitionDuration === '0s') {
+      resultContainer.style.display = 'none';
+    } else {
+      resultContainer.addEventListener('transitionend', hideAfter);
+    }
     const resultInline = resultContainer.querySelector('.result-inline');
     // result-msg has been moved outside the result container into the panel
     const resultMsg = panelEl.querySelector('.result-msg');
@@ -476,8 +544,11 @@ function showResult(panelEl, htmlNumeric, htmlText, _showSecondary = true) {
   const inline = rc.querySelector('.result-inline');
   const msg = panelEl.querySelector('.result-msg');
 
-  // Reveal container
+  // Reveal container with a smooth transition
   rc.style.display = 'block';
+  // trigger reflow so transitions apply
+  void rc.offsetWidth;
+  rc.classList.add('shown');
   // Enable copyable state so clicking anywhere on the blue area copies the value
   rc.classList.add('copyable');
   // ensure equals row is visible
@@ -537,6 +608,13 @@ function showResult(panelEl, htmlNumeric, htmlText, _showSecondary = true) {
   // Put the explanatory text into the smaller message area (tooltip area)
   if (msg) {
     msg.innerHTML = htmlText || '';
+    // link the result container to the message for screen readers
+    if (msg.id) rc.setAttribute('aria-describedby', msg.id); else {
+      // ensure msg has an id for referencing
+      const mid = 'result-msg-' + (panelEl.id || Math.random().toString(36).slice(2,8));
+      msg.id = mid;
+      rc.setAttribute('aria-describedby', mid);
+    }
   }
 
   // Ensure actions are visible and buttons remain accessible (do not hide Clear)
@@ -1055,3 +1133,64 @@ try {
     }
   }
 } catch (e) { /* ignore */ }
+
+// Global press feedback: delegate pointer and keyboard events to show a short
+// pressed state for buttons and interactive elements. This provides visual
+// feedback even when event handlers call preventDefault() or when elements are
+// moved in the DOM on click (like the global link button).
+(function setupPressFeedback() {
+  const PRESS_CLASS = 'pressed';
+  const PRESS_DURATION = 220; // ms fallback in case pointerup doesn't fire
+
+  function applyPress(el) {
+    if (!el) return;
+    el.classList.add(PRESS_CLASS);
+    // clear any existing timer
+    if (el._pressTimeout) { clearTimeout(el._pressTimeout); el._pressTimeout = null; }
+    el._pressTimeout = setTimeout(() => { el.classList.remove(PRESS_CLASS); el._pressTimeout = null; }, PRESS_DURATION + 40);
+  }
+  function clearPress(el) {
+    if (!el) return;
+    el.classList.remove(PRESS_CLASS);
+    if (el._pressTimeout) { clearTimeout(el._pressTimeout); el._pressTimeout = null; }
+  }
+
+  // Pointer-based: pointerdown -> apply, pointerup/cancel/leave -> clear
+  document.addEventListener('pointerdown', (ev) => {
+    const btn = ev.target.closest('button, [role="button"], .result-container');
+    if (!btn) return;
+    applyPress(btn);
+  }, { passive: true });
+
+  ['pointerup','pointercancel','pointerleave','pointerout'].forEach(evt => {
+    document.addEventListener(evt, (ev) => {
+      const btn = ev.target.closest('button, [role="button"], .result-container');
+      if (!btn) return;
+      clearPress(btn);
+    }, { passive: true });
+  });
+
+  // Keyboard: Space/Enter -> apply on keydown, clear on keyup/blur
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    const el = document.activeElement;
+    if (!el) return;
+    if (el.matches && (el.matches('button') || el.matches('[role="button"]') || el.classList.contains('result-container'))) {
+      applyPress(el);
+    }
+  });
+  document.addEventListener('keyup', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    const el = document.activeElement;
+    if (!el) return;
+    if (el.matches && (el.matches('button') || el.matches('[role="button"]') || el.classList.contains('result-container'))) {
+      clearPress(el);
+    }
+  });
+  // clear on blur
+  window.addEventListener('blur', () => {
+    document.querySelectorAll('.pressed').forEach(el => clearPress(el));
+  });
+})();
+
+// theme toggle removed
