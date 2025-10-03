@@ -568,3 +568,11 @@ body{
   background: rgba(11,116,255,0.06);
   transform: translateY(-50%) translateY(-2px) scale(1.02);
 }
+
+/* Smooth theme transitions for background and color changes */
+body, .panel, .compact-card, .result-container {
+  transition: background-color 260ms ease, color 260ms ease, box-shadow 260ms ease;
+}
+
+/* Theme icon sizing inside the toggle */
+#theme-icon { width: 20px; height: 20px; display:inline-block; }
