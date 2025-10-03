@@ -133,17 +133,44 @@ function loadAllInputs() {
 }
 
 // showToast: use centralized CSS (style.css) rather than injecting styles
+// Centralized toast: reuse a single element so rapid triggers don't spawn many
+// nodes and positioning remains stable (fixes off-screen popups on fast clicks).
 function showToast(msg, duration = 3000) {
-  const t = document.createElement('div');
-  t.className = 'percently-toast';
-  t.textContent = msg;
-  document.body.appendChild(t);
-  // trigger transition
-  requestAnimationFrame(() => t.classList.add('show'));
-  setTimeout(() => {
+  try {
+    const ID = 'percently-toast-global';
+    let t = document.getElementById(ID);
+
+    // Create once and reuse
+    if (!t) {
+      t = document.createElement('div');
+      t.id = ID;
+      t.className = 'percently-toast';
+      t.style.pointerEvents = 'auto';
+      document.body.appendChild(t);
+    }
+
+    // Clear any previous hide timer so repeated calls extend the visible period
+    if (t._hideTimeout) { clearTimeout(t._hideTimeout); t._hideTimeout = null; }
+
+    // Update text and ensure it's visible
+    t.textContent = msg;
+    // Force reflow then add class to start transition from hidden -> visible
     t.classList.remove('show');
-    t.addEventListener('transitionend', () => t.remove(), { once: true });
-  }, duration);
+    // Use RAF to ensure the removal is applied before adding back
+    requestAnimationFrame(() => t.classList.add('show'));
+
+    // Schedule hide
+    t._hideTimeout = setTimeout(() => {
+      t.classList.remove('show');
+      // Remove on transition end to keep DOM clean
+      const onEnd = () => { t.removeEventListener('transitionend', onEnd); /* keep element for reuse, do not remove */ };
+      t.addEventListener('transitionend', onEnd);
+      t._hideTimeout = null;
+    }, duration);
+  } catch (err) {
+    // If anything fails, ignore - toast is non-critical
+    try { console.warn('showToast failed', err); } catch (e) {}
+  }
 }
 
 // Centralized icon strings (imported)
