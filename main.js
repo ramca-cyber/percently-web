@@ -361,6 +361,10 @@ function createResultControls(panelEl) {
   if (!valueEl) {
     valueEl = document.createElement('span');
     valueEl.className = 'result-value';
+    // allow keyboard focus directly on the large numeric result so users can
+    // focus it and use keyboard shortcuts like Ctrl/Cmd+C to copy the value
+    valueEl.setAttribute('tabindex', '0');
+    valueEl.setAttribute('aria-label', 'Result value');
     if (inline) inline.insertBefore(valueEl, inline.firstChild); else rc.appendChild(valueEl);
   }
 
@@ -432,11 +436,39 @@ function createResultControls(panelEl) {
 
     rc.addEventListener('click', containerHandler);
     rc.addEventListener('keydown', (ev) => {
+      // Enter/Space trigger copy for keyboard users
       if (ev.key === 'Enter' || ev.key === ' ') {
         ev.preventDefault();
         containerHandler(ev);
+        return;
+      }
+      // Ctrl/Cmd + C should copy the value when focus is on the container
+      if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'c' || ev.key === 'C')) {
+        ev.preventDefault();
+        containerHandler(ev);
+        return;
       }
     });
+
+    // If the numeric value element itself receives focus, allow Ctrl/Cmd+C
+    // and Enter/Space to copy as well. This covers cases where the user tabs
+    // directly to the number.
+    const valueElLocal = valueEl;
+    if (valueElLocal) {
+      valueElLocal.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          // prefer using inline copy button for visual feedback
+          containerHandler(ev);
+          return;
+        }
+        if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'c' || ev.key === 'C')) {
+          ev.preventDefault();
+          containerHandler(ev);
+          return;
+        }
+      });
+    }
 
     rc.dataset.copyContainerWired = '1';
   }
