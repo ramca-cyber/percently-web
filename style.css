@@ -353,8 +353,7 @@ body{
 
 .result-container .result-inline-copy {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 12px;
   right: 12px;
   display:inline-flex;
   align-items:center;
@@ -379,8 +378,8 @@ body{
 .result-inline .result-inline-copy:hover {
   opacity: 1;
   background: rgba(11,116,255,0.06);
-  /* maintain vertical centering while lifting slightly */
-  transform: translateY(-50%) translateY(-2px) scale(1.02);
+  /* slight lift on hover */
+  transform: translateY(-2px) scale(1.02);
 }
 .result-inline-copy.copied { background: rgba(46,139,87,0.08); }
 .result-inline-copy.copy-failed { background: rgba(224,62,62,0.08); }
@@ -390,8 +389,7 @@ body{
 /* Make the inline copy badge respond when the user hovers anywhere over the blue result container */
 .result-container .result-inline-copy {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 12px;
   right: 12px;
   display:inline-flex;
   align-items:center;
@@ -597,5 +595,5 @@ body{
   opacity: 1;
   pointer-events: auto;
   background: rgba(11,116,255,0.06);
-  transform: translateY(-50%) translateY(-2px) scale(1.02);
+  transform: translateY(-2px) scale(1.02);
 }
