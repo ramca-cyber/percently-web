@@ -292,6 +292,15 @@ body{
   transform: translateY(-50%) translateY(-2px) scale(1.02);
 }
 
+/* When a result is present, make the whole blue segment act as a copy target */
+.result-container.copyable { cursor: pointer; }
+.result-container.copyable:hover { background: linear-gradient(180deg,#f4fbff,#eaf6ff); }
+.result-container.copyable:active { transform: translateY(0.5px); }
+.result-container.copyable:focus { outline: none; box-shadow: 0 10px 20px rgba(11,116,255,0.06); }
+
+/* Ensure the inline copy badge is revealed when the container is copyable (even if pointer is not directly over the small button) */
+.result-container.copyable .result-inline-copy { opacity: 1; pointer-events: auto; }
+
 /* Ensure copy triggers contain the absolute-positioned badge */
 .result-copy-btn,
 .bar-btn.link-copy { position: relative; }
@@ -380,6 +389,11 @@ body{
 /* Buttons for result actions placed below the result container to avoid overlapping the big number */
 .result-actions-below{ display:flex; gap:0.5rem; justify-content:center; margin-top:12px }
 .result-actions-below .bar-btn{ padding:10px 14px; font-size:0.95rem }
+
+/* Allow a link button to be absolutely positioned inside the actions row
+  so Calculate/Clear remain visually centered. Buttons inside will not
+  be affected by the absolute child. */
+.actions-below .result-link-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
 
 /* Make the full formatted value readable in the message area when we show compact inline */
 .result-msg { word-break: normal; white-space: normal; overflow-wrap: anywhere; }

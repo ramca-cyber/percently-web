@@ -37,17 +37,24 @@
             inlineOut = hasPercent ? (val.toFixed(2) + '%') : val.toFixed(2);
           }
 
-          // Only update the DOM when the visible value would actually change.
-          if (String(resultEl.textContent).trim() !== inlineOut) {
-            // Disconnect observer while updating to avoid re-entrancy loops that can hang the UI
+          // Prefer updating the large .result-value element when present so we have a
+          // single visible numeric source (avoids duplicates when main.js also renders
+          // an absolutely-positioned big number). Fall back to resultEl (.result-inline)
+          // when .result-value is not available.
+          const panel = resultEl.closest('.tab-panel') || resultEl.closest('.right-col') || document;
+          const valueEl = panel && panel.querySelector ? panel.querySelector('.result-value') : null;
+          const targetEl = valueEl || resultEl;
+
+          // Only update when the visible value would change.
+          if (String(targetEl.textContent).trim() !== inlineOut) {
             try { if (mo) mo.disconnect(); } catch (err) {}
-            // Use textContent to strip any HTML added by main.js (e.g. <strong>)
-            resultEl.textContent = inlineOut;
+            // write the compact/two-decimal inline representation into the preferred element
+            targetEl.textContent = inlineOut;
+
             // Also set the panel's .result-msg (if available) to the full formatted string for copy/tooltip
             // BUT do not overwrite the descriptive message that the app (main.js) may have placed
             // (e.g. "11% of 1,122 = 123.42"). Only write the full numeric when the inline display
             // is compacted (we cannot show full there) or when the message area is empty.
-            const panel = resultEl.closest('.tab-panel') || resultEl.closest('.right-col') || document;
             if (panel) {
               const msg = panel.querySelector('.result-msg');
               if (msg) {
@@ -56,6 +63,7 @@
                 if (shouldWriteFull) msg.textContent = full;
               }
             }
+
             // Re-observe on next microtask
             Promise.resolve().then(() => { try { if (mo) mo.observe(resultEl, { childList: true, characterData: true, subtree: true }); } catch (err) {} });
           }

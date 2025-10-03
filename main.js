@@ -392,6 +392,54 @@ function createResultControls(panelEl) {
     }, { okMsg: M.valueCopied, failMsg: M.copyFailed });
     inlineCopy.dataset.copyWired = '1';
   }
+
+  // Make the whole result container act as a copy target (click anywhere on the blue box)
+  // Instead of using makeCopyTarget directly on the container (which would show the
+  // copied badge on the container), wire the container to call copyAndFlash using
+  // the inline copy button element so the same badge/toast appears as when the
+  // user clicks the small copy icon.
+  if (!rc.dataset.copyContainerWired) {
+    // ensure container can be focused for keyboard copy
+    if (!rc.hasAttribute('tabindex')) rc.setAttribute('tabindex', '0');
+
+    const getContainerCopyText = () => {
+      const panelId = panelEl && panelEl.id ? panelEl.id : '';
+      const inferredMode = panelId && panelId.indexOf('panel-') === 0 ? panelId.slice(6) : null;
+      if (lastComputedEntry && inferredMode && lastComputedEntry.mode === inferredMode && typeof lastComputedEntry.value !== 'undefined' && !Number.isNaN(lastComputedEntry.value)) {
+        if (inferredMode === 'what') return `${formatNumber(lastComputedEntry.value)}%`;
+        return `${formatNumber(lastComputedEntry.value)}`;
+      }
+      const panelMsg = panelEl.querySelector('.result-msg');
+      if (panelMsg && panelMsg.textContent && panelMsg.textContent.trim()) return panelMsg.textContent.trim();
+      const inline = rc.querySelector('.result-inline');
+      const raw = inline && inline.textContent ? inline.textContent.trim() : '';
+      return raw.replace(/^[=\s]+/, '').trim();
+    };
+
+    const inlineCopyBtn = rc.querySelector('.result-inline-copy');
+    const containerHandler = async (e) => {
+      // prevent double-handling if the user actually clicked the small button
+      if (e.target && e.target.closest && e.target.closest('.result-inline-copy')) return;
+      e.preventDefault();
+      const text = getContainerCopyText();
+      if (!inlineCopyBtn) {
+        // fallback: use global behavior on container itself
+        await copyAndFlash(rc, text, M.valueCopied, M.copyFailed);
+      } else {
+        await copyAndFlash(inlineCopyBtn, text, M.valueCopied, M.copyFailed);
+      }
+    };
+
+    rc.addEventListener('click', containerHandler);
+    rc.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        containerHandler(ev);
+      }
+    });
+
+    rc.dataset.copyContainerWired = '1';
+  }
 }
 
 // Clear result container for a panel (leave action buttons visible)
@@ -399,6 +447,7 @@ function clearResult(panelEl) {
   const resultContainer = panelEl.querySelector('.result-container');
   if (resultContainer) {
     resultContainer.style.display = 'none';
+    resultContainer.classList.remove('copyable');
     const resultInline = resultContainer.querySelector('.result-inline');
     // result-msg has been moved outside the result container into the panel
     const resultMsg = panelEl.querySelector('.result-msg');
@@ -429,6 +478,8 @@ function showResult(panelEl, htmlNumeric, htmlText, _showSecondary = true) {
 
   // Reveal container
   rc.style.display = 'block';
+  // Enable copyable state so clicking anywhere on the blue area copies the value
+  rc.classList.add('copyable');
   // ensure equals row is visible
   const eqRow = rc.closest('.eq-row');
   if (eqRow) eqRow.style.display = '';
@@ -513,6 +564,39 @@ function selectTab(mode, skipUrlUpdate = false) {
 
   // Focus first input
   focusFirstInput();
+
+  // Move the global calc link button into the active panel's actions row so it is
+  // vertically aligned with Calculate/Clear while staying horizontally at the
+  // right edge. Use absolute positioning inside the actions container so the
+  // center-aligned Calculate/Clear buttons are not affected by flex auto-margins.
+  try {
+    const calcLinkBtn = document.getElementById('calc-link');
+    if (calcLinkBtn && panels[mode]) {
+      const actions = panels[mode].querySelector('.actions-below');
+      if (actions) {
+        actions.classList.remove('hidden');
+        // ensure Calculate/Clear remain visible
+        Array.from(actions.querySelectorAll('button')).forEach(b => { b.style.display = ''; });
+        // move the button into this actions container (appendChild will move it)
+        if (calcLinkBtn.parentNode !== actions) {
+          // ensure the actions container can contain an absolutely-positioned child
+          actions.style.position = actions.style.position || 'relative';
+          // absolutely position the link at the right edge vertically centered
+          calcLinkBtn.style.position = 'absolute';
+          calcLinkBtn.style.right = '12px';
+          calcLinkBtn.style.top = '50%';
+          calcLinkBtn.style.transform = 'translateY(-50%)';
+          // ensure the icon is present (inject LINK_ICON if missing)
+          if (!/\<svg/.test(calcLinkBtn.innerHTML)) {
+            try { calcLinkBtn.innerHTML = `<span>Link</span>${LINK_ICON}`; } catch (e) { /* ignore */ }
+          }
+          actions.appendChild(calcLinkBtn);
+        }
+      }
+    }
+  } catch (e) {
+    // ignore positioning errors
+  }
 }
 
 // Focus first input in current panel
@@ -921,39 +1005,10 @@ Object.keys(panels).forEach(mode => {
       return raw.replace(/^[=\s]+/, '').trim();
   }, { okMsg: M.valueCopied, failMsg: M.copyFailed });
 
-    // Move the Link button to the panel's actions-below so it sits alongside Calculate/Clear
-    const actionsBelow = panel.querySelector('.actions-below');
-    if (actionsBelow) {
-      // ensure a link button exists in the actions area (create if missing)
-      let movedLink = actionsBelow.querySelector('.result-link-btn');
-      if (!movedLink) {
-        movedLink = document.createElement('button');
-        movedLink.type = 'button';
-        movedLink.className = 'bar-btn primary result-link-btn link-copy';
-        movedLink.style.fontSize = '0.95rem';
-        movedLink.title = 'Copy link for this calculation';
-        movedLink.setAttribute('aria-label', 'Copy link for this calculation');
-  movedLink.innerHTML = `<span>Link</span>${LINK_ICON}`;
-        actionsBelow.appendChild(movedLink);
-      }
-
-      makeCopyTarget(movedLink, () => {
-        const params = new URLSearchParams();
-        params.set('mode', mode);
-
-        // Prefer the canonical parameters from the lastComputedEntry for this mode
-        const canonicalParams = (lastComputedEntry && lastComputedEntry.mode === mode && lastComputedEntry.params)
-          ? lastComputedEntry.params
-          : readInputsFor(mode);
-
-        Object.keys(canonicalParams || {}).forEach(k => {
-          if (canonicalParams[k]) params.set(k, canonicalParams[k]);
-        });
-
-        params.set('auto', '1');
-        return window.location.origin + window.location.pathname + '?' + params.toString();
-  }, { okMsg: M.linkCopied, failMsg: M.copyFailed });
-    }
+    // NOTE: Per-panel Link buttons are handled by a single global link button (#calc-link)
+    // to avoid duplicating controls across each panel. The global button is wired below
+    // after all panels are initialized. This keeps the layout consistent and places the
+    // link control at the right edge of the calculator as requested.
   }
 });
 
@@ -963,3 +1018,40 @@ loadFromURL();
 renderHistory();
 // Ensure every panel has the inline value and copy affordance wired (idempotent).
 // (creation/wiring now handled via createResultControls called during panel init)
+
+// Wire the global calculator Link button (copies permalink for the active panel)
+const calcLinkBtn = document.getElementById('calc-link');
+if (calcLinkBtn) {
+  makeCopyTarget(calcLinkBtn, () => {
+    const mode = currentMode || 'of';
+    const params = new URLSearchParams();
+    params.set('mode', mode);
+
+    // Prefer canonical parameters from lastComputedEntry when it matches current mode
+    const canonicalParams = (lastComputedEntry && lastComputedEntry.mode === mode && lastComputedEntry.params)
+      ? lastComputedEntry.params
+      : readInputsFor(mode);
+
+    Object.keys(canonicalParams || {}).forEach(k => {
+      if (canonicalParams[k]) params.set(k, canonicalParams[k]);
+    });
+    params.set('auto', '1');
+    return window.location.origin + window.location.pathname + '?' + params.toString();
+  }, { okMsg: M.linkCopied, failMsg: M.copyFailed });
+}
+
+// Place the calc-link button into the active panel's actions area on init
+try {
+  const initBtn = document.getElementById('calc-link');
+  if (initBtn) {
+    const panel = panels[currentMode] || panels['of'];
+    if (panel) {
+      const actions = panel.querySelector('.actions-below');
+      if (actions) {
+        initBtn.style.marginLeft = 'auto';
+        actions.classList.remove('hidden');
+        actions.appendChild(initBtn);
+      }
+    }
+  }
+} catch (e) { /* ignore */ }
