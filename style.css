@@ -23,6 +23,8 @@
   --card-padding: 12px;
   --result-font-size: 56px;
   --result-color: #0b62d6;
+  /* Base input font size exposed for proportional result sizing */
+  --big-input-size: clamp(16px, 4vw, 28px);
   --shadow-elev: 0 8px 20px rgba(10,30,60,0.06);
   --border: 1px solid rgba(13,30,57,0.06);
   --selected-bg-start: #eaf4ff;
@@ -121,7 +123,7 @@ body{
   padding:14px 12px;
   /* larger, more adaptive input font - raised minimum and maximum */
   /* make inputs larger by default; larger min and max */
-  font-size: clamp(16px, 4vw, 28px);
+  font-size: var(--big-input-size);
   font-weight:700;
   border:1px solid rgba(13,30,57,0.06);
   background:linear-gradient(180deg,#fff,#fbfdff);
@@ -146,14 +148,38 @@ body{
   justify-content:center;
   align-items:center;
   position:relative;
-  /* expose the computed result inline size so other children (copy badge) can match it */
-  --result-inline-size: clamp(16px, 5vw, var(--result-font-size));
+  /* compute result size proportionally to input size so the ratio stays consistent */
+  --result-inline-size: calc(var(--big-input-size) * 2);
   box-shadow: 0 6px 18px rgba(11,116,255,0.04) inset;
   width:100%;
   /* entry/exit transitions for smoother reveal */
   opacity: 0;
   transform: translateY(-6px) scale(0.996);
   transition: opacity 220ms ease, transform 220ms cubic-bezier(.2,.9,.3,1);
+}
+
+/* Consistent layout for all panels: center the big numeric value and place the
+   copy affordance near the right edge of the result container. This ensures
+   every panel variant (.panel, .tab-panel, etc.) behaves the same. */
+.result-container { position: relative; }
+.result-container .result-value,
+.tab-panel .result-container .result-value,
+.panel .result-container .result-value {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 2;
+}
+.result-container .result-inline-copy,
+.tab-panel .result-container .result-inline-copy,
+.panel .result-container .result-inline-copy {
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 3;
 }
 /* Reveal state when JS adds .shown */
 .result-container.shown {
@@ -188,7 +214,7 @@ body{
 }
 
 /* absolutely center the numeric value so it is visually in the middle of the blue box */
-.result-container .result-value{
+  .result-container .result-value{
   /* By default we absolutely center the large numeric value for wide layouts.
      On narrow viewports we switch to static flow so the value wraps and the
      copy badge can sit to the top-right without overlapping the number. */
@@ -203,9 +229,20 @@ body{
   line-height: 0.92;
   font-size: var(--result-inline-size);
   z-index: 2;
-+}
-+
-+
+}
+
+/* Placeholder shown inside result when no computed value exists. It's muted,
+   not selectable, and not part of the copyable value. */
+.result-placeholder {
+  color: var(--muted);
+  font-weight: 700;
+  opacity: 0.9;
+  user-select: none;
+  pointer-events: none;
+  display: block;
+  margin-top: 6px;
+  font-size: 0.95em;
+}
 
 /* ensure the inline copy badge sits above the number and is not clipped */
 .result-inline .result-inline-copy { z-index: 3; }
@@ -512,40 +549,106 @@ body{
   .split-rect{ grid-template-columns: 1fr; }
   .right-col{ order:2; border-left:0; border-top:1px solid rgba(13,30,57,0.04); }
   .left-col{ order:1 }
-  .result-container{ min-height:120px }
+  .result-container{ min-height:140px; padding:16px }
 
-  /* On small screens don't absolutely center the large number; keep it in
-     the normal flow so it can wrap and remain readable with the copy badge
-     positioned above it. */
-  .result-container .result-value{
-    position: static;
-    transform: none;
-    margin: 6px 0;
-    font-size: clamp(28px, 8vw, 44px);
-    line-height: 1.05;
+  /* Make the large numeric result bigger and participate in flow so it wraps */
+  .result-container{ min-height:110px; padding:12px; position:relative }
+
+  /* Keep the numeric value absolutely centered in the blue result box on mobile
+     (same vertical+horizontal centering as on desktop). */
+  .result-container .result-value,
+  .tab-panel .result-container .result-value,
+  .panel .result-container .result-value {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    text-align: center;
+    font-size: clamp(36px, 10vw, 76px);
+    line-height: 1.02;
+    z-index: 2;
   }
 
-  /* Make the inline copy badge slightly larger and easier to tap */
-  .result-container .result-inline-copy{
-    top: 10px;
-    right: 10px;
-    width: 48px;
-    height: 48px;
-    font-size: 18px;
-    opacity: 1; /* surface it by default on mobile */
+  /* Keep the copy badge near the right edge but vertically centered in the box */
+  .result-container .result-inline-copy,
+  .panel .result-container .result-inline-copy {
+    position: absolute !important;
+    right: 10px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
+    opacity: 1;
     pointer-events: auto;
+    background: transparent;
   }
 
-  /* Make action buttons stack and grow to full width */
-  .result-actions-below { flex-direction: column; gap: 8px; }
-  .result-actions-below .bar-btn{ width:100%; }
+  /* Keep action areas single-line on mobile but ensure buttons are evenly spaced
+     and fill the available width. Use gap to separate them and allow buttons to
+     shrink when needed. */
+  .actions-below, .result-actions-below, .panel .actions-below, .panel .result-actions-below {
+    display:flex;
+    flex-direction:row;
+    gap:8px;
+    align-items:center;
+    justify-content:space-between; /* evenly distribute across the row */
+    padding:4px 6px;
+    width: 100%;
+  }
 
-  /* Increase hit target for small buttons */
+  /* Let each button flex to share space evenly but allow the middle button to be
+     slightly smaller when space is tight. This creates a visually balanced row. */
+  .actions-below .bar-btn, .result-actions-below .bar-btn, .panel .actions-below .bar-btn, .panel .result-actions-below .bar-btn {
+    flex: 1 1 0; /* grow and shrink evenly */
+    min-width: 0; /* allow shrinking below intrinsic width when needed */
+    padding: 12px 14px;
+    font-size: 1rem;
+  }
+
+  /* Slight visual emphasis for primary calculate button: allow it to take a bit more space */
+  .actions-below .bar-btn.primary, .result-actions-below .bar-btn.primary { flex: 1.2 1 0; }
+
+  /* The global calc link should behave like a normal button in the row */
+  #calc-link {
+    position: static !important;
+    margin-left: 0 !important;
+    width: auto;
+  }
+
+  /* Ensure any link button that was absolutely positioned in desktop
+     layout is restored to the normal flow on mobile so it lines up with
+     Calculate/Clear in the same row. */
+  .actions-below .result-link-btn,
+  .result-actions-below .result-link-btn,
+  .panel .actions-below .result-link-btn {
+    position: static !important;
+    transform: none !important;
+    right: auto !important;
+    top: auto !important;
+    margin: 0 !important;
+    flex: 1 1 0;
+  }
+
+  /* Increase hit target for small buttons and inputs */
   .bar-btn, .button { padding: 14px 16px; }
-
-  /* Inputs: slightly reduce padding but allow larger font for readability */
   .big-input { padding: 12px 10px; font-size: clamp(16px, 6vw, 24px); }
+
+  /* Make sure hidden actions still render on mobile (we rely on JS to hide on desktop) */
+  .actions-below.hidden { display:flex !important; }
+
+  /* Hide tabs on small screens and show a compact select instead */
+  .options-row { display:flex; flex-wrap:nowrap; }
+  .mode-select { display:none; }
 }
+
+@media (max-width:520px) {
+  /* On very small screens hide the tab buttons and show the select control */
+  .options-row { display:none !important; }
+  .mode-select { display:inline-block; min-width:160px; padding:8px 10px; border-radius:8px; border:1px solid rgba(13,30,57,0.06); background:#fff }
+}
+
 
 /* History card styling (separate area below the calculator) */
 .history-card{ margin-top:14px; padding:12px; }

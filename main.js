@@ -395,6 +395,19 @@ function createResultControls(panelEl) {
     if (inline) inline.insertBefore(valueEl, inline.firstChild); else rc.appendChild(valueEl);
   }
 
+  // Add a non-copyable placeholder (muted sample) if not already present
+  let placeholder = rc.querySelector('.result-placeholder');
+  if (!placeholder) {
+    placeholder = document.createElement('div');
+    placeholder.className = 'result-placeholder';
+    // compute an illustrative sample result based on placeholder attributes of inputs
+    // placeholder intentionally empty — the result box should be empty until a
+    // calculation is performed or input change leads to a displayed message.
+    placeholder.textContent = '';
+    // place placeholder after the inline numeric area so it visually reads below
+    if (inline) inline.appendChild(placeholder); else rc.appendChild(placeholder);
+  }
+
   // inline copy button
   let inlineCopy = rc.querySelector('.result-inline-copy');
   if (!inlineCopy) {
@@ -505,28 +518,23 @@ function createResultControls(panelEl) {
 function clearResult(panelEl) {
   const resultContainer = panelEl.querySelector('.result-container');
   if (resultContainer) {
-    // animate hiding by removing the visible class and waiting for transition end
-    resultContainer.classList.remove('shown');
+    // Keep the result container visible but clear its contents and copyable state.
+    // This prevents the UI from collapsing when inputs change while still clearing
+    // any existing numeric value or explanatory message.
     resultContainer.classList.remove('copyable');
-    const hideAfter = () => { resultContainer.style.display = 'none'; resultContainer.removeEventListener('transitionend', hideAfter); };
-    // If no transition is present, hide immediately
-    const cs = getComputedStyle(resultContainer);
-    if (!cs.transitionDuration || cs.transitionDuration === '0s') {
-      resultContainer.style.display = 'none';
-    } else {
-      resultContainer.addEventListener('transitionend', hideAfter);
-    }
     const resultInline = resultContainer.querySelector('.result-inline');
-    // result-msg has been moved outside the result container into the panel
     const resultMsg = panelEl.querySelector('.result-msg');
     if (resultInline) {
       const val = resultInline.querySelector('.result-value');
       if (val) val.innerHTML = '';
+      // show placeholder when empty
+      const ph = resultInline.querySelector('.result-placeholder');
+      if (ph) ph.style.display = 'block';
     }
     if (resultMsg) resultMsg.textContent = '';
-    // hide equals row when empty
+    // ensure equals row remains visible so the layout stays consistent
     const eqRow = resultContainer.closest('.eq-row');
-    if (eqRow) eqRow.style.display = 'none';
+    if (eqRow) eqRow.style.display = '';
   }
   // Do NOT hide clear/primary buttons — keep actions visible so user can clear anytime.
   const actions = panelEl.querySelector('.actions-below');
@@ -566,6 +574,9 @@ function showResult(panelEl, htmlNumeric, htmlText, _showSecondary = true) {
       inline.insertBefore(valueEl, inline.firstChild);
     }
     valueEl.innerHTML = htmlNumeric || '';
+    // hide placeholder when a real result is shown
+    const ph = inline.querySelector('.result-placeholder');
+    if (ph) ph.style.display = 'none';
     // Styling is handled by CSS; no inline styles required.
   }
 
@@ -642,6 +653,12 @@ function selectTab(mode, skipUrlUpdate = false) {
 
   // Focus first input
   focusFirstInput();
+
+  // Keep mobile select in sync when tabs are changed programmatically
+  try {
+    const ms = document.getElementById('mode-select');
+    if (ms) ms.value = mode;
+  } catch (e) { /* ignore */ }
 
   // Move the global calc link button into the active panel's actions row so it is
   // vertically aligned with Calculate/Clear while staying horizontally at the
@@ -916,6 +933,17 @@ Object.keys(tabs).forEach(mode => {
   if (tab) tab.addEventListener('click', () => selectTab(mode));
 });
 
+// Sync mobile mode select with tab selection and wire change -> selectTab
+const modeSelect = document.getElementById('mode-select');
+if (modeSelect) {
+  // update select when tab changes (replace select value in selectTab already updates URL and focuses first input)
+  const origSelectHandler = modeSelect.onchange;
+  modeSelect.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (val && panels[val]) selectTab(val);
+  });
+}
+
 // Utility: numericize a params object (strings -> normalized numbers)
 function numericizeParams(params) {
   const out = {};
@@ -949,6 +977,13 @@ Object.keys(panels).forEach(mode => {
   const form = panel.querySelector('form');
   // Ensure result controls are present and wired for this panel
   createResultControls(panel);
+  // Ensure the result container is visible by default (do not hide on init)
+  const rcInit = panel.querySelector('.result-container');
+  if (rcInit) {
+    rcInit.style.display = 'block';
+    // add shown so CSS styles for visible state apply (but no numeric value yet)
+    rcInit.classList.add('shown');
+  }
   
   // Ensure both Calculate and Clear buttons are visible at start
   const actionsInit = panel.querySelector('.actions-below');

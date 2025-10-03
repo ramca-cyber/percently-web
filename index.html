@@ -49,6 +49,17 @@
           <button role="tab" aria-selected="false" aria-controls="panel-what" id="tab-what" class="option-card">What % is X of Y</button>
           <button role="tab" aria-selected="false" aria-controls="panel-diff" id="tab-diff" class="option-card">% change A→B</button>
         </div>
+        <!-- Compact mode selector for small screens; hidden on desktop via CSS -->
+        <div style="flex:0 0 auto;">
+          <label for="mode-select" class="sr-only">Choose calculation mode</label>
+          <select id="mode-select" class="mode-select" aria-label="Calculator mode">
+            <option value="of">X% of Y</option>
+            <option value="inc">Increase by %</option>
+            <option value="dec">Decrease by %</option>
+            <option value="what">What % is X of Y</option>
+            <option value="diff">% change A→B</option>
+          </select>
+        </div>
         <!-- Global per-panel link button: placed at the right edge of the calculator card so it sits just above the history Clear button -->
         <div style="flex:0 0 auto;">
           <button id="calc-link" type="button" class="bar-btn primary result-link-btn link-copy" title="Copy link for this calculation" aria-label="Copy link for this calculation">
@@ -78,7 +89,7 @@
               <div class="input-caption">Result</div>
               <div class="eq-row">
                 <div class="equals">=</div>
-                <div class="result-container" style="display:none;">
+                <div class="result-container">
                   <div class="result-inline" aria-live="polite"></div>
                 </div>
               </div>
@@ -113,7 +124,7 @@
               <div class="input-caption">Result</div>
               <div class="eq-row">
                 <div class="equals">=</div>
-                <div class="result-container" style="display:none;">
+                <div class="result-container">
                   <div class="result-inline" aria-live="polite"></div>
                 </div>
               </div>
@@ -148,7 +159,7 @@
               <div class="input-caption">Result</div>
               <div class="eq-row">
                 <div class="equals">=</div>
-                <div class="result-container" style="display:none;">
+                <div class="result-container">
                   <div class="result-inline" aria-live="polite"></div>
                 </div>
               </div>
@@ -183,7 +194,7 @@
               <div class="input-caption">Result</div>
               <div class="eq-row">
                 <div class="equals">=</div>
-                <div class="result-container" style="display:none;">
+                <div class="result-container">
                   <div class="result-inline" aria-live="polite"></div>
                 </div>
               </div>
@@ -218,7 +229,7 @@
               <div class="input-caption">Result</div>
               <div class="eq-row">
                 <div class="equals">=</div>
-                <div class="result-container" style="display:none;">
+                <div class="result-container">
                   <div class="result-inline" aria-live="polite"></div>
                 </div>
               </div>
