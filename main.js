@@ -446,8 +446,17 @@ function createResultControls(panelEl) {
 function clearResult(panelEl) {
   const resultContainer = panelEl.querySelector('.result-container');
   if (resultContainer) {
-    resultContainer.style.display = 'none';
+    // animate hiding by removing the visible class and waiting for transition end
+    resultContainer.classList.remove('shown');
     resultContainer.classList.remove('copyable');
+    const hideAfter = () => { resultContainer.style.display = 'none'; resultContainer.removeEventListener('transitionend', hideAfter); };
+    // If no transition is present, hide immediately
+    const cs = getComputedStyle(resultContainer);
+    if (!cs.transitionDuration || cs.transitionDuration === '0s') {
+      resultContainer.style.display = 'none';
+    } else {
+      resultContainer.addEventListener('transitionend', hideAfter);
+    }
     const resultInline = resultContainer.querySelector('.result-inline');
     // result-msg has been moved outside the result container into the panel
     const resultMsg = panelEl.querySelector('.result-msg');
@@ -476,8 +485,11 @@ function showResult(panelEl, htmlNumeric, htmlText, _showSecondary = true) {
   const inline = rc.querySelector('.result-inline');
   const msg = panelEl.querySelector('.result-msg');
 
-  // Reveal container
+  // Reveal container with a smooth transition
   rc.style.display = 'block';
+  // trigger reflow so transitions apply
+  void rc.offsetWidth;
+  rc.classList.add('shown');
   // Enable copyable state so clicking anywhere on the blue area copies the value
   rc.classList.add('copyable');
   // ensure equals row is visible
@@ -537,6 +549,13 @@ function showResult(panelEl, htmlNumeric, htmlText, _showSecondary = true) {
   // Put the explanatory text into the smaller message area (tooltip area)
   if (msg) {
     msg.innerHTML = htmlText || '';
+    // link the result container to the message for screen readers
+    if (msg.id) rc.setAttribute('aria-describedby', msg.id); else {
+      // ensure msg has an id for referencing
+      const mid = 'result-msg-' + (panelEl.id || Math.random().toString(36).slice(2,8));
+      msg.id = mid;
+      rc.setAttribute('aria-describedby', mid);
+    }
   }
 
   // Ensure actions are visible and buttons remain accessible (do not hide Clear)
@@ -1055,3 +1074,35 @@ try {
     }
   }
 } catch (e) { /* ignore */ }
+
+// --- Theme toggle (light / dark) ---
+const THEME_KEY = 'percently_theme_v1';
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'dark') root.classList.add('theme-dark'); else root.classList.remove('theme-dark');
+  const btn = document.getElementById('theme-toggle');
+  if (btn) {
+    btn.textContent = theme === 'dark' ? 'Dark' : 'Light';
+    btn.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+  }
+}
+
+function initTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = saved || (prefersDark ? 'dark' : 'light');
+    applyTheme(theme);
+  } catch (e) { applyTheme('light'); }
+  const tbtn = document.getElementById('theme-toggle');
+  if (tbtn) {
+    tbtn.addEventListener('click', () => {
+      const cur = document.documentElement.classList.contains('theme-dark') ? 'dark' : 'light';
+      const next = cur === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* ignore */ }
+      applyTheme(next);
+    });
+  }
+}
+
+initTheme();
