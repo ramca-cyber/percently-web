@@ -40,13 +40,21 @@
     </header>
 
     <section class="compact-card" aria-label="Calculator">
-      <!-- Tabs for different calculator modes -->
-      <div role="tablist" aria-label="Calculator modes" class="options-row boxed">
-        <button role="tab" aria-selected="true" aria-controls="panel-of" id="tab-of" class="option-card">X% of Y</button>
-        <button role="tab" aria-selected="false" aria-controls="panel-inc" id="tab-inc" class="option-card">Increase by %</button>
-        <button role="tab" aria-selected="false" aria-controls="panel-dec" id="tab-dec" class="option-card">Decrease by %</button>
-        <button role="tab" aria-selected="false" aria-controls="panel-what" id="tab-what" class="option-card">What % is X of Y</button>
-        <button role="tab" aria-selected="false" aria-controls="panel-diff" id="tab-diff" class="option-card">% change A→B</button>
+      <!-- Tabs for different calculator modes with a global "Link" button aligned to the right -->
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div role="tablist" aria-label="Calculator modes" class="options-row boxed" style="flex:1;">
+          <button role="tab" aria-selected="true" aria-controls="panel-of" id="tab-of" class="option-card">X% of Y</button>
+          <button role="tab" aria-selected="false" aria-controls="panel-inc" id="tab-inc" class="option-card">Increase by %</button>
+          <button role="tab" aria-selected="false" aria-controls="panel-dec" id="tab-dec" class="option-card">Decrease by %</button>
+          <button role="tab" aria-selected="false" aria-controls="panel-what" id="tab-what" class="option-card">What % is X of Y</button>
+          <button role="tab" aria-selected="false" aria-controls="panel-diff" id="tab-diff" class="option-card">% change A→B</button>
+        </div>
+        <!-- Global per-panel link button: placed at the right edge of the calculator card so it sits just above the history Clear button -->
+        <div style="flex:0 0 auto;">
+          <button id="calc-link" type="button" class="bar-btn primary result-link-btn link-copy" title="Copy link for this calculation" aria-label="Copy link for this calculation">
+            <span>Link</span>
+          </button>
+        </div>
       </div>
 
       <!-- Panel: X% of Y -->
