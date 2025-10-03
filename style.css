@@ -32,21 +32,6 @@
   --font-ui: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 
-/* Dark theme: apply when document element has .theme-dark */
-.theme-dark {
-  --bg: #071428;
-  --bg-panel: #0b1b2b;
-  --bg-secondary: #071827;
-  --bg-soft: #061a2a;
-  --muted: #94a3b8;
-  --muted-color: #7b94a8;
-  --fg: #e6f0fa;
-  --accent: #22c1c3;
-  --accent-600: #17a3a5;
-  --result-color: #7ae0de;
-  --shadow-elev: 0 10px 30px rgba(3,8,16,0.6);
-}
-
 /* Reset / base */
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -568,11 +553,3 @@ body{
   background: rgba(11,116,255,0.06);
   transform: translateY(-50%) translateY(-2px) scale(1.02);
 }
-
-/* Smooth theme transitions for background and color changes */
-body, .panel, .compact-card, .result-container {
-  transition: background-color 260ms ease, color 260ms ease, box-shadow 260ms ease;
-}
-
-/* Theme icon sizing inside the toggle */
-#theme-icon { width: 20px; height: 20px; display:inline-block; }
