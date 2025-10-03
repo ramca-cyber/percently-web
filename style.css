@@ -157,16 +157,24 @@ body{
 }
 /* Reveal state when JS adds .shown */
 .result-container.shown {
-  opacity: 1;
-  transform: translateY(0) scale(1);
+  opacity: 1 !important;
+  transform: translateY(0) scale(1) !important;
+  display: block !important;
+  visibility: visible !important;
 }
 
 /* When container is copyable (or shown), surface the inline copy badge so users
    can copy the value without needing to hover the container. */
 .result-container.copyable .result-inline-copy,
 .result-container.shown .result-inline-copy {
-  opacity: 1;
-  pointer-events: auto;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Force the numeric value to be visible when the container is shown */
+.result-container.shown .result-value {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 .eq-row{ display:grid; grid-template-columns: auto 1fr; align-items:center; gap:8px; width:100%; padding-left:6px }
 .equals{font-size:18px;color:#0b2f48;font-weight:700}
