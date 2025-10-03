@@ -318,6 +318,10 @@ body{
   box-shadow: 0 10px 20px rgba(11,116,255,0.06);
 }
 
+/* Anchor the copied badge (::after) to the button so it doesn't position
+   relative to the viewport when multiple copies are triggered quickly. */
+.bar-btn.link-copy { position: relative; }
+
 /* result-actions container (center-right of result, vertical stack) */
 .result-actions{position:absolute;bottom:12px;right:12px;top:auto;transform:none;display:flex;gap:8px;align-items:center;flex-direction:row}
 .result-actions .bar-btn{padding:6px 10px;font-size:0.85rem}
@@ -434,6 +438,18 @@ body{
 /* Make result-inline and copy button visually accessible when copied (subtle bg) */
 .result-inline.copy-failed { background: rgba(224,62,62,0.06); box-shadow: 0 8px 16px rgba(224,62,62,0.06); }
 .result-inline.copy-failed::after { content: "Copy failed"; }
+
+/* Avoid using ::after badges for copy feedback on link buttons and inline copy
+   controls because pseudo-elements can be positioned relative to unexpected
+   ancestors during rapid DOM changes. Rely on the centralized toast instead. */
+.bar-btn.link-copy.copied::after,
+.result-inline-copy.copied::after,
+.result-copy-btn.copied::after,
+.bar-btn.link-copy.copy-failed::after,
+.result-inline-copy.copy-failed::after {
+  display: none !important;
+  content: none !important;
+}
 
 /* History */
 .history{margin-top:8px;display:flex;flex-direction:column;gap:8px}
