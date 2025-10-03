@@ -189,7 +189,9 @@ body{
 
 /* absolutely center the numeric value so it is visually in the middle of the blue box */
 .result-container .result-value{
-  /* absolutely center the number relative to the blue container so it is visually centered alone */
+  /* By default we absolutely center the large numeric value for wide layouts.
+     On narrow viewports we switch to static flow so the value wraps and the
+     copy badge can sit to the top-right without overlapping the number. */
   position: absolute;
   left: 50%;
   top: 50%;
@@ -201,7 +203,9 @@ body{
   line-height: 0.92;
   font-size: var(--result-inline-size);
   z-index: 2;
-}
++}
++
++
 
 /* ensure the inline copy badge sits above the number and is not clipped */
 .result-inline .result-inline-copy { z-index: 3; }
@@ -503,11 +507,44 @@ body{
   /* Keep columns even on medium screens but allow the layout to breathe */
   .split-rect{ grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr); }
 }
+
 @media (max-width:720px) {
   .split-rect{ grid-template-columns: 1fr; }
   .right-col{ order:2; border-left:0; border-top:1px solid rgba(13,30,57,0.04); }
   .left-col{ order:1 }
   .result-container{ min-height:120px }
+
+  /* On small screens don't absolutely center the large number; keep it in
+     the normal flow so it can wrap and remain readable with the copy badge
+     positioned above it. */
+  .result-container .result-value{
+    position: static;
+    transform: none;
+    margin: 6px 0;
+    font-size: clamp(28px, 8vw, 44px);
+    line-height: 1.05;
+  }
+
+  /* Make the inline copy badge slightly larger and easier to tap */
+  .result-container .result-inline-copy{
+    top: 10px;
+    right: 10px;
+    width: 48px;
+    height: 48px;
+    font-size: 18px;
+    opacity: 1; /* surface it by default on mobile */
+    pointer-events: auto;
+  }
+
+  /* Make action buttons stack and grow to full width */
+  .result-actions-below { flex-direction: column; gap: 8px; }
+  .result-actions-below .bar-btn{ width:100%; }
+
+  /* Increase hit target for small buttons */
+  .bar-btn, .button { padding: 14px 16px; }
+
+  /* Inputs: slightly reduce padding but allow larger font for readability */
+  .big-input { padding: 12px 10px; font-size: clamp(16px, 6vw, 24px); }
 }
 
 /* History card styling (separate area below the calculator) */
