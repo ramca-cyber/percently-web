@@ -1134,4 +1134,63 @@ try {
   }
 } catch (e) { /* ignore */ }
 
+// Global press feedback: delegate pointer and keyboard events to show a short
+// pressed state for buttons and interactive elements. This provides visual
+// feedback even when event handlers call preventDefault() or when elements are
+// moved in the DOM on click (like the global link button).
+(function setupPressFeedback() {
+  const PRESS_CLASS = 'pressed';
+  const PRESS_DURATION = 220; // ms fallback in case pointerup doesn't fire
+
+  function applyPress(el) {
+    if (!el) return;
+    el.classList.add(PRESS_CLASS);
+    // clear any existing timer
+    if (el._pressTimeout) { clearTimeout(el._pressTimeout); el._pressTimeout = null; }
+    el._pressTimeout = setTimeout(() => { el.classList.remove(PRESS_CLASS); el._pressTimeout = null; }, PRESS_DURATION + 40);
+  }
+  function clearPress(el) {
+    if (!el) return;
+    el.classList.remove(PRESS_CLASS);
+    if (el._pressTimeout) { clearTimeout(el._pressTimeout); el._pressTimeout = null; }
+  }
+
+  // Pointer-based: pointerdown -> apply, pointerup/cancel/leave -> clear
+  document.addEventListener('pointerdown', (ev) => {
+    const btn = ev.target.closest('button, [role="button"], .result-container');
+    if (!btn) return;
+    applyPress(btn);
+  }, { passive: true });
+
+  ['pointerup','pointercancel','pointerleave','pointerout'].forEach(evt => {
+    document.addEventListener(evt, (ev) => {
+      const btn = ev.target.closest('button, [role="button"], .result-container');
+      if (!btn) return;
+      clearPress(btn);
+    }, { passive: true });
+  });
+
+  // Keyboard: Space/Enter -> apply on keydown, clear on keyup/blur
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    const el = document.activeElement;
+    if (!el) return;
+    if (el.matches && (el.matches('button') || el.matches('[role="button"]') || el.classList.contains('result-container'))) {
+      applyPress(el);
+    }
+  });
+  document.addEventListener('keyup', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    const el = document.activeElement;
+    if (!el) return;
+    if (el.matches && (el.matches('button') || el.matches('[role="button"]') || el.classList.contains('result-container'))) {
+      clearPress(el);
+    }
+  });
+  // clear on blur
+  window.addEventListener('blur', () => {
+    document.querySelectorAll('.pressed').forEach(el => clearPress(el));
+  });
+})();
+
 // theme toggle removed

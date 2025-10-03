@@ -277,6 +277,23 @@ body{
 /* Micro-interactions: subtle lift on hover for primary buttons */
 .button.primary:hover, .bar-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(11,116,255,0.08); }
 
+/* Pressed / active feedback for all interactive controls (click/tap/keyboard)
+  We use a short transition and a pressed class applied by JS for robust
+  feedback even when default :active is suppressed by JS event.preventDefault(). */
+.pressed { transform: translateY(1px) scale(0.996) !important; opacity: 0.98; }
+
+/* Buttons get a darker background when pressed for clarity */
+.bar-btn.pressed, .button.pressed { box-shadow: 0 6px 14px rgba(11,116,255,0.06) !important; }
+.bar-btn.primary.pressed { background: #0957c2 !important; }
+.bar-btn.secondary.pressed { background: rgba(11,116,255,0.06) !important; }
+
+/* Inline copy badge and result container pressed state */
+.result-inline-copy.pressed { transform: translateY(-50%) translateY(-1px) scale(0.98); background: rgba(11,116,255,0.06); }
+.result-container.pressed { box-shadow: 0 6px 22px rgba(11,116,255,0.06) inset; transform: translateY(0) scale(0.998); }
+
+/* make press transitions quick and snappy */
+.bar-btn, .button, .result-inline-copy, .result-container, .result-inline { transition: transform 90ms ease, box-shadow 90ms ease, background-color 90ms ease; }
+
 /* Toast / copied badge tweak: softer color and larger font for clarity */
 .result-inline.copied::after,
 .result-copy-btn.copied,
