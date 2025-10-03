@@ -1,10 +1,24 @@
 :root{
+  /* Palette + tokens */
   --bg: #ffffff;
+  --bg-panel: #ffffff;
   --bg-secondary: #f7f9fb;
+  --bg-soft: #f6f9fb;
   --muted: #6b7a86;
+  --muted-color: #536072;
   --fg: #06243a;
-  --accent: #0b74ff;
+  --accent: #0b74ff; /* primary accent (kept blue for continuity) */
+  --accent-600: #0a63d6;
   --danger: #e03e3e;
+
+  /* Layout spacing scale */
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
   --card-radius: 10px;
   --card-padding: 12px;
   --result-font-size: 56px;
@@ -13,6 +27,9 @@
   --border: 1px solid rgba(13,30,57,0.06);
   --selected-bg-start: #eaf4ff;
   --selected-bg-end: #dbefff;
+
+  /* Typography */
+  --font-ui: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 
 /* Reset / base */
@@ -20,17 +37,19 @@
 html,body{height:100%}
 body{
   margin:0;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  font-family: var(--font-ui);
   color:var(--fg);
   background:linear-gradient(180deg,#fbfdff,#f7fbff);
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
-  line-height:1.35;
-  padding:16px;
+  line-height:1.45;
+  font-size:16px;
+  padding:var(--space-lg);
 }
 
 /* Layout helpers */
 .wrap{max-width:980px;margin:0 auto}
+.container{max-width:880px;margin-left:auto;margin-right:auto;padding:var(--space-lg)}
 .compact{padding:6px}
 .compact-card{
   background:var(--bg);
@@ -40,10 +59,23 @@ body{
   border:var(--border);
 }
 
+/* Generic panel/card used for calculator panels */
+.panel{
+  background:var(--bg-panel);
+  border-radius:var(--card-radius);
+  padding:var(--space-md);
+  box-shadow: 0 10px 30px rgba(11,20,30,0.06);
+  border: 1px solid rgba(11,20,30,0.04);
+  margin-bottom: var(--space-lg);
+}
+
 /* Header */
-.site-header{margin-bottom:10px}
-.title{margin:0;font-size:18px;font-weight:600}
+.site-header{margin-bottom:10px; text-align:center}
+.title{margin:0; font-size:24px; font-weight:700}
 .subtitle{margin:4px 0 0;color:var(--muted);font-size:12px}
+
+/* Ensure calculation panel titles and the page title share the same scale */
+.calc-mode-title{margin:0; font-size:24px; font-weight:700}
 
 /* Options row (tabs / radio-like cards) */
 .options-row{display:flex;gap:8px;flex-wrap:wrap}
@@ -74,8 +106,8 @@ body{
   display:grid;
   /* Make left (inputs) and right (result) share space evenly while keeping a sensible minimum width */
   grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
-  gap:10px;
-  margin-top:10px;
+  gap:16px;
+  margin-top:12px;
   align-items:stretch;
 }
 
@@ -105,7 +137,7 @@ body{
 .right-col{padding:12px;border-left:1px solid rgba(13,30,57,0.03);display:flex;flex-direction:column;align-items:stretch;justify-content:center}
 .input-caption{font-weight:600}
 .result-container{
-  background: linear-gradient(180deg,#f6fbff,#eef7ff);
+  background: linear-gradient(180deg,var(--bg-soft),#eef7ff);
   border-radius:10px;
   padding:12px;
   min-height:140px;
@@ -197,6 +229,41 @@ body{
   border:1px solid rgba(13,30,57,0.08);
   color:var(--fg);
 }
+
+/* Improved button styles and accessibility */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 140ms cubic-bezier(.2,.9,.3,1), box-shadow 140ms ease, background-color 140ms ease;
+}
+.button:active { transform: translateY(0.5px); }
+.button:focus { outline: none; }
+
+/* Primary/secondary variants that map to existing classes */
+.button.primary, .bar-btn.primary { background: linear-gradient(180deg,var(--accent),var(--accent-600)); color: #fff; }
+.button.secondary, .bar-btn.secondary { background: transparent; border: 1px solid rgba(11,20,30,0.06); color: var(--fg); }
+
+/* Focus-visible for keyboard users */
+:focus-visible { outline: 3px solid rgba(11,116,255,0.12); outline-offset: 2px; border-radius: 8px; }
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* Micro-interactions: subtle lift on hover for primary buttons */
+.button.primary:hover, .bar-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(11,116,255,0.08); }
+
+/* Toast / copied badge tweak: softer color and larger font for clarity */
+.result-inline.copied::after,
+.result-copy-btn.copied,
+.bar-btn.link-copy.copied { box-shadow: 0 8px 18px rgba(46,139,87,0.12); font-weight:700 }
 
 /* Hover and focus styles for action buttons (Calculate, Clear, Load, Link) */
 .bar-btn:hover,
